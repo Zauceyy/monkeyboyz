@@ -139,6 +139,26 @@
   .voted li span:first-child{color:#86868b} .voted li span:last-child{font-weight:600}
   .row-btns{display:flex;gap:10px;justify-content:center}
   .pill.ghost{background:#333336;color:#f5f5f7;border:0;cursor:pointer;font:inherit;font-size:17px}
+  .media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;margin-top:34px}
+  .media-item{background:var(--tile);border-radius:20px;overflow:hidden}
+  .media-item .frame{aspect-ratio:16/10;background:#000;display:flex;align-items:center;justify-content:center}
+  .media-item img{width:100%;height:100%;object-fit:cover}
+  .media-item iframe{width:100%;height:100%;border:0}
+  .media-item p{margin:0;padding:12px 16px;font-size:15px;color:var(--ink2)}
+  .closed{max-width:520px;margin:0 auto;padding:10px 22px 110px;text-align:center;color:#86868b;display:none}
+  .closed.show{display:block}
+  /* ---------- dark mode ---------- */
+  .theme-btn{background:none;border:0;cursor:pointer;font-size:16px;line-height:1;padding:6px;margin-left:18px;border-radius:50%;color:inherit}
+  .theme-btn:hover{background:rgba(127,127,127,.15)}
+  html[data-theme=dark]{--ink:#f5f5f7;--ink2:#a1a1a6;--bg:#000;--tile:#1d1d1f;--link:#2997ff;--line:#424245;color-scheme:dark}
+  html[data-theme=dark] header{background:rgba(22,22,23,.8);border-bottom-color:rgba(255,255,255,.08)}
+  html[data-theme=dark] .brand,html[data-theme=dark] .tab{color:rgba(255,255,255,.8)}
+  html[data-theme=dark] .tab:hover,html[data-theme=dark] .tab.active{color:#fff;border-bottom-color:#fff}
+  html[data-theme=dark] .tile.dark{background:#0b0b0c;box-shadow:inset 0 0 0 1px #2c2c2e}
+  html[data-theme=dark] .card .ph{background:#1d1d1f}
+  html[data-theme=dark] .gnav button{background:#2c2c2e}
+  html[data-theme=dark] .gnav button:hover{background:#3a3a3c}
+  html[data-theme=dark] footer a{color:#d2d2d7}
   /* ---------- discord ---------- */
   .dc{text-align:center;padding:110px 22px 120px}
   .dc-icon{width:88px;height:88px;border-radius:24px;background:#5865f2;margin:0 auto 26px;display:flex;align-items:center;justify-content:center}
@@ -156,6 +176,11 @@
     .sec{padding:80px 22px}
   }
 </style>
+<script>
+(function(){ var t; try { t = localStorage.getItem('mb_theme'); } catch(e) {}
+  if (!t) t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', t); })();
+</script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute">
@@ -169,6 +194,7 @@
       <a class="tab" href="#home" data-tab="home">Home</a>
       <a class="tab" href="#vote" data-tab="vote">Vote</a>
       <a class="tab" href="#discord" data-tab="discord">Discord</a>
+      <button class="theme-btn" id="themeBtn" aria-label="Toggle dark mode" title="Dark mode">🌙</button>
     </div>
   </nav>
 </header>
@@ -227,6 +253,14 @@
     <div class="gnav"><button aria-label="Previous" onclick="slide(-1)">‹</button><button aria-label="Next" onclick="slide(1)">›</button></div>
   </section>
 
+  <section class="sec" id="mediaSec" style="display:none;padding-top:40px">
+    <div class="wrap">
+      <h2 class="h-l">Clips &amp; GIFs.</h2>
+      <p class="lede" style="margin-left:0">The best (worst) moments.</p>
+      <div class="media-grid" id="mediaGrid"></div>
+    </div>
+  </section>
+
   <section class="sec gray">
     <div class="wrap center reveal">
       <h2 class="h-l">Join the troop.</h2>
@@ -252,6 +286,7 @@
     <button class="pill gold" id="submit" disabled>Submit ballot</button>
     <div class="note" id="note"></div>
   </div>
+  <div class="closed" id="closed"><div style="font-size:54px">🔒</div><h3 style="color:#f5f5f7;font-size:28px;margin:6px 0">Voting is closed.</h3><p>Check back for the next Monkey Awards.</p></div>
   <div class="voted" id="voted">
     <div class="box">
       <div style="font-size:54px">✅</div>
@@ -302,35 +337,37 @@
 
 <script>
 /* =====================================================================
-   MEMBERS — in order. Picture files live in the members/ folder.
+   Content comes from the MonkeyBoyz backend (edit it at /admin).
+   The lists below are only a fallback if the backend can't be reached.
    ===================================================================== */
-const MEMBERS = [
-  { name: "Armen",    img: "members/armen.webp" },
-  { name: "Zay",      img: "members/zay.webp" },
-  { name: "Blackdog", img: "members/blackdog.webp" },
-  { name: "Dylan",    img: "members/dylan.webp" },
-  { name: "Geordie",  img: "members/geordie.webp" },
-  { name: "Kansas",   img: "members/kansas.webp" },
-  { name: "Erick",    img: "members/erick.webp" },
-  { name: "Freddy",   img: "members/freddy.webp" },
-  { name: "Gerson",   img: "members/gerson.webp" },
-];
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e) { return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e) {} },
+};
+const API = 'https://script.google.com/macros/s/AKfycbxME9lP3-7DGlmyNJtS9ZtMdeTpB_7xPiacksZa9VzDCdeYJZGhFo_6EUK3q1x-SlTf/exec';
+const FALLBACK = {
+  round: '2026', votingOpen: true,
+  members: ['Armen','Zay','Blackdog','Dylan','Geordie','Kansas','Erick','Freddy','Gerson']
+    .map(n => ({ name: n, img: 'members/' + n.toLowerCase() + '.webp' })),
+  categories: [
+    { title: "Most Embarrassing Moment", desc: "The one we'll never let them live down.", nominees: 'all' },
+    { title: "Biggest Freak",            desc: "Self-explanatory.",                       nominees: 'all' },
+    { title: "Sorest Loser",             desc: "Lost the challenge and lost their mind.",  nominees: 'all' },
+    { title: "Funniest Monkey",          desc: "Always has the room dying.",               nominees: 'all' },
+    { title: "Biggest Yapper",           desc: "Will not stop talking. Ever.",             nominees: 'all' },
+    { title: "Monkey of the Year",       desc: "The MVP. The GOAT. The top banana.",       nominees: 'all' },
+  ],
+  media: []
+};
+let C = FALLBACK;
 
-/* =====================================================================
-   AWARDS — edit titles/descriptions here. Every category lists all the
-   members (in the order above). To use a custom list for one category,
-   replace  nominees: MEMBERS  with  nominees: [{name:"..."}, ...]
-   Change BALLOT_ID (e.g. "2027") to start a fresh vote for everyone.
-   ===================================================================== */
-const BALLOT_ID = "2026";
-const CATEGORIES = [
-  { title: "Most Embarrassing Moment", desc: "The one we'll never let them live down.", nominees: MEMBERS },
-  { title: "Biggest Freak",            desc: "Self-explanatory.",                       nominees: MEMBERS },
-  { title: "Sorest Loser",             desc: "Lost the challenge and lost their mind.",  nominees: MEMBERS },
-  { title: "Funniest Monkey",          desc: "Always has the room dying.",               nominees: MEMBERS },
-  { title: "Biggest Yapper",           desc: "Will not stop talking. Ever.",             nominees: MEMBERS },
-  { title: "Monkey of the Year",       desc: "The MVP. The GOAT. The top banana.",       nominees: MEMBERS },
-];
+/* ---------- dark mode ---------- */
+function syncThemeBtn(){ const d = document.documentElement.getAttribute('data-theme') === 'dark';
+  const b = document.getElementById('themeBtn'); b.textContent = d ? '☀️' : '🌙'; b.title = d ? 'Light mode' : 'Dark mode'; }
+document.getElementById('themeBtn').onclick = () => {
+  const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t); store.set('mb_theme', t); syncThemeBtn();
+};
 
 /* ---------- tabs ---------- */
 const views = ['home','vote','discord'];
@@ -351,90 +388,131 @@ function observe(){
   io = io || new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } }), {threshold:.12});
   document.querySelectorAll('.view.active .reveal:not(.on)').forEach(e => io.observe(e));
 }
-function slide(d){ const g = document.getElementById('gallery'); g.scrollBy({left: d * 360, behavior:'smooth'}); }
-addEventListener('hashchange', route); route();
+function slide(d){ document.getElementById('gallery').scrollBy({left: d * 280, behavior:'smooth'}); }
+addEventListener('hashchange', route); route(); syncThemeBtn();
+
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+const safeUrl = u => /^(https:\/\/|members\/|[a-z0-9_-]+\.(webp|png|jpe?g|gif)$)/i.test(u || '') ? u : '';
 
 /* ---------- meet the troop ---------- */
-const gal = document.getElementById('gallery');
-MEMBERS.forEach(m => {
-  const c = document.createElement('div'); c.className = 'card';
-  c.innerHTML = '<div class="ph"><img loading="lazy" alt=""></div><h4></h4>';
-  c.querySelector('img').src = m.img; c.querySelector('img').alt = m.name;
-  c.querySelector('h4').textContent = m.name;
-  gal.appendChild(c);
-});
+function renderMembers(){
+  const gal = document.getElementById('gallery'); gal.innerHTML = '';
+  C.members.forEach(m => {
+    const c = el('div','card'), ph = el('div','ph'), im = new Image();
+    im.loading = 'lazy'; im.alt = m.name; im.src = safeUrl(m.img);
+    ph.appendChild(im); c.appendChild(ph); c.appendChild(el('h4', null, m.name)); gal.appendChild(c);
+  });
+}
+
+/* ---------- clips & gifs ---------- */
+function ytId(u){ const m = String(u).match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([\w-]{11})/); return m ? m[1] : null; }
+function renderMedia(){
+  const sec = document.getElementById('mediaSec'), grid = document.getElementById('mediaGrid');
+  grid.innerHTML = '';
+  (C.media || []).forEach(m => {
+    const item = el('div','media-item'), fr = el('div','frame');
+    if (m.type === 'youtube' && ytId(m.url)) {
+      const f = el('iframe'); f.src = 'https://www.youtube.com/embed/' + ytId(m.url); f.allow = 'encrypted-media; picture-in-picture; fullscreen'; f.allowFullscreen = true; f.loading = 'lazy'; fr.appendChild(f);
+    } else if (m.type === 'video' && /^https:\/\/drive\.google\.com\//.test(m.url)) {
+      const f = el('iframe'); f.src = m.url; f.allow = 'autoplay; fullscreen'; f.allowFullscreen = true; f.loading = 'lazy'; fr.appendChild(f);
+    } else if (safeUrl(m.url)) {
+      const im = new Image(); im.loading = 'lazy'; im.alt = m.caption || ''; im.src = m.url; fr.appendChild(im);
+    } else return;
+    item.appendChild(fr); if (m.caption) item.appendChild(el('p', null, m.caption)); grid.appendChild(item);
+  });
+  sec.style.display = grid.children.length ? '' : 'none';
+}
 
 /* ---------- voting (one ballot per person) ---------- */
-const KEY_DRAFT = 'mb_draft_' + BALLOT_ID, KEY_DONE = 'mb_voted_' + BALLOT_ID;
-const store = {
-  get(k){ try { return localStorage.getItem(k); } catch(e) { return null; } },
-  set(k,v){ try { localStorage.setItem(k,v); } catch(e) {} },
-};
 function cookieGet(k){ return document.cookie.split('; ').find(c => c.startsWith(k + '='))?.split('=').slice(1).join('='); }
 function cookieSet(k,v){ document.cookie = k + '=' + v + '; max-age=31536000; path=/; SameSite=Lax'; }
+function voterId(){
+  let id = store.get('mb_voter') || cookieGet('mb_voter');
+  if (!id) { id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()); }
+  store.set('mb_voter', id); cookieSet('mb_voter', id); return id;
+}
+const keyDraft = () => 'mb_draft_' + C.round, keyDone = () => 'mb_voted_' + C.round;
 function finalBallot(){
-  const raw = store.get(KEY_DONE) || (cookieGet(KEY_DONE) ? decodeURIComponent(cookieGet(KEY_DONE)) : null);
+  const raw = store.get(keyDone()) || (cookieGet(keyDone()) ? decodeURIComponent(cookieGet(keyDone())) : null);
   try { return raw ? JSON.parse(raw) : null; } catch(e) { return raw ? {} : null; }
 }
-let picks = {};
-try { picks = JSON.parse(store.get(KEY_DRAFT) || '{}'); } catch(e) {}
-let locked = !!finalBallot();
+let picks = {}, locked = false;
+const nomineesFor = c => c.nominees === 'all' || !Array.isArray(c.nominees) ? C.members : C.members.filter(m => c.nominees.includes(m.name));
 
-const catsEl = document.getElementById('cats');
-CATEGORIES.forEach((c) => {
-  const sec = document.createElement('section'); sec.className = 'cat';
-  sec.innerHTML = '<h3></h3><p class="desc"></p><div class="noms"></div>';
-  sec.querySelector('h3').textContent = c.title;
-  sec.querySelector('.desc').textContent = c.desc || '';
-  const noms = sec.querySelector('.noms');
-  c.nominees.forEach((n, ni) => {
-    const b = document.createElement('button'); b.className = 'nom'; b.type = 'button';
-    b.innerHTML = '<div class="art"></div><div class="nm"></div><div class="check">✓</div>';
-    const art = b.querySelector('.art');
-    if (n.img) { const im = new Image(); im.src = n.img; im.alt = ''; im.loading = 'lazy'; art.appendChild(im); } else art.textContent = ni + 1;
-    b.querySelector('.nm').textContent = n.name;
-    if (picks[c.title] === n.name) b.classList.add('sel');
-    b.onclick = () => {
-      if (locked) return;
-      noms.querySelectorAll('.nom').forEach(x => x.classList.remove('sel'));
-      b.classList.add('sel'); picks[c.title] = n.name; store.set(KEY_DRAFT, JSON.stringify(picks)); update();
-    };
-    noms.appendChild(b);
+function renderVote(){
+  try { picks = JSON.parse(store.get(keyDraft()) || '{}'); } catch(e) { picks = {}; }
+  locked = !!finalBallot();
+  const catsEl = document.getElementById('cats'); catsEl.innerHTML = '';
+  C.categories.forEach(c => {
+    const sec = el('section','cat'); sec.appendChild(el('h3', null, c.title)); sec.appendChild(el('p','desc', c.desc || ''));
+    const noms = el('div','noms');
+    nomineesFor(c).forEach((n, ni) => {
+      const b = el('button','nom'); b.type = 'button';
+      const art = el('div','art');
+      if (n.img) { const im = new Image(); im.src = safeUrl(n.img); im.alt = ''; im.loading = 'lazy'; art.appendChild(im); } else art.textContent = ni + 1;
+      b.appendChild(art); b.appendChild(el('div','nm', n.name)); b.appendChild(el('div','check','✓'));
+      if (picks[c.title] === n.name) b.classList.add('sel');
+      b.onclick = () => {
+        if (locked) return;
+        noms.querySelectorAll('.nom').forEach(x => x.classList.remove('sel'));
+        b.classList.add('sel'); picks[c.title] = n.name; store.set(keyDraft(), JSON.stringify(picks)); update();
+      };
+      noms.appendChild(b);
+    });
+    sec.appendChild(noms); catsEl.appendChild(sec);
   });
-  catsEl.appendChild(sec);
-});
+  update();
+}
 function fillList(ul, ballot){
   ul.innerHTML = '';
-  CATEGORIES.forEach(c => { if (!ballot[c.title]) return; const li = document.createElement('li');
-    li.innerHTML = '<span></span><span></span>'; li.children[0].textContent = c.title; li.children[1].textContent = ballot[c.title]; ul.appendChild(li); });
+  C.categories.forEach(c => { if (!ballot[c.title]) return; const li = el('li');
+    li.appendChild(el('span', null, c.title)); li.appendChild(el('span', null, ballot[c.title])); ul.appendChild(li); });
 }
 function update(){
-  const done = CATEGORIES.filter(c => picks[c.title]).length;
-  document.getElementById('fill').style.width = (locked ? 100 : done / CATEGORIES.length * 100) + '%';
-  document.getElementById('plbl').textContent = locked ? 'Ballot submitted' : `${done} of ${CATEGORIES.length} categories`;
-  document.getElementById('submit').disabled = done < CATEGORIES.length;
-  document.getElementById('note').textContent = done < CATEGORIES.length ? 'Pick a nominee in every category to submit.' : 'You only get one vote, so make it count.';
-  if (locked) {
-    catsEl.style.display = 'none';
-    document.querySelector('.submit-row').style.display = 'none';
-    fillList(document.getElementById('myballot'), finalBallot() || {});
-    document.getElementById('voted').classList.add('show');
-  }
+  const done = C.categories.filter(c => picks[c.title]).length, total = C.categories.length;
+  const closed = C.votingOpen === false && !locked;
+  document.getElementById('fill').style.width = (locked ? 100 : total ? done / total * 100 : 0) + '%';
+  document.getElementById('plbl').textContent = locked ? 'Ballot submitted' : closed ? 'Voting closed' : `${done} of ${total} categories`;
+  document.getElementById('submit').disabled = done < total;
+  document.getElementById('note').textContent = done < total ? 'Pick a nominee in every category to submit.' : 'You only get one vote, so make it count.';
+  document.getElementById('cats').style.display = locked || closed ? 'none' : '';
+  document.querySelector('.submit-row').style.display = locked || closed ? 'none' : '';
+  document.getElementById('closed').classList.toggle('show', closed);
+  document.getElementById('voted').classList.toggle('show', locked);
+  if (locked) fillList(document.getElementById('myballot'), finalBallot() || {});
 }
-update();
+function lockIn(){
+  const ballot = JSON.stringify(picks);
+  store.set(keyDone(), ballot); cookieSet(keyDone(), encodeURIComponent(ballot));
+  locked = true; update(); window.scrollTo({top:0, behavior:'smooth'});
+}
 document.getElementById('submit').onclick = () => {
   if (locked) return;
   fillList(document.getElementById('summary'), picks);
   document.getElementById('modal').classList.add('show');
 };
 document.getElementById('back').onclick = () => document.getElementById('modal').classList.remove('show');
-document.getElementById('confirm').onclick = () => {
-  const ballot = JSON.stringify(picks);
-  store.set(KEY_DONE, ballot); cookieSet(KEY_DONE, encodeURIComponent(ballot));
-  locked = true;
-  document.getElementById('modal').classList.remove('show');
-  update(); window.scrollTo({top:0, behavior:'smooth'});
+document.getElementById('confirm').onclick = async () => {
+  const btn = document.getElementById('confirm'); btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'vote', round: C.round, voter: voterId(), picks }) });
+    const d = await r.json();
+    if (d.ok || d.error === 'duplicate') { document.getElementById('modal').classList.remove('show'); lockIn(); }
+    else if (d.error === 'closed') { document.getElementById('modal').classList.remove('show'); C.votingOpen = false; update(); }
+    else throw new Error(d.error);
+  } catch (e) {
+    document.getElementById('note').textContent = "Couldn't send your vote — check your connection and try again.";
+    document.getElementById('modal').classList.remove('show');
+  } finally { btn.disabled = false; btn.textContent = 'Submit vote'; }
 };
+
+/* ---------- load ---------- */
+function renderAll(){ renderMembers(); renderMedia(); renderVote(); }
+renderAll();
+fetch(API + '?action=content').then(r => r.json()).then(d => {
+  if (d && d.ok && d.content && Array.isArray(d.content.members)) { C = d.content; renderAll(); }
+}).catch(() => {});
 </script>
 </body>
 </html>
