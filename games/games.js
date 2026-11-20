@@ -28,10 +28,11 @@
       if (state === 'ready') state = 'play';
       monkey.vy = FLAP;
     }
-    let overAt = 0;
+    let overAt = 0, onOver = null;
     function die() {
       state = 'over'; overAt = performance.now();
       if (score > best) { best = score; LS.set('mb_flappy_best', best); }
+      if (onOver) onOver(score);
     }
     function update(dt) {
       t += dt;
@@ -103,7 +104,8 @@
       update(dt); draw();
       if (running) raf = requestAnimationFrame(loop);
     }
-    function init(canvas) {
+    function init(canvas, opts) {
+      onOver = opts && opts.onOver;
       cv = canvas; ctx = cv.getContext('2d');
       const dpr = Math.min(2, window.devicePixelRatio || 1);
       cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -176,14 +178,14 @@
       root.innerHTML = `
         <div class="clk">
           <div class="clk-left">
-            <div class="clk-count"><b id="clkN">0</b><span>bobbles</span></div>
+            <div class="clk-count"><b id="clkN">0</b><span>Gerson bobbles</span></div>
             <div class="clk-rate" id="clkRate"></div>
             <div class="clk-stage" id="clkStage">
-              <button class="clk-head" id="clkHead" aria-label="Bobble the head">
+              <button class="clk-head" id="clkHead" aria-label="Bobble Gerson's head">
                 <video id="clkVid" src="games/bobble.mp4" poster="games/bobble.jpg" muted playsinline loop preload="auto"></video>
               </button>
             </div>
-            <p class="clk-tip">Click his head to make him bobble.</p>
+            <p class="clk-tip">Click Gerson's head to make him bobble.</p>
           </div>
           <div class="clk-shop" id="clkShop"><h4>Upgrades</h4></div>
         </div>`;
@@ -208,6 +210,67 @@
     return { init, start, stop };
   })();
 
+  /* ======================== FLAPPY MONKEY LEADERBOARD ======================== */
+  const Board = (() => {
+    let el = {}, lastScore = 0, myName = LS.get('mb_flappy_name', '');
+    const api = () => window.MB_API;
+    const device = () => { let id = null; try { id = localStorage.getItem('mb_voter'); } catch (e) {}
+      if (!id) { id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)); try { localStorage.setItem('mb_voter', id); } catch (e) {} } return id; };
+    function draw(top) {
+      el.list.innerHTML = '';
+      if (!top || !top.length) { const li = document.createElement('li'); li.className = 'empty'; li.textContent = 'No scores yet — be the first!'; el.list.appendChild(li); return; }
+      top.forEach((r, i) => {
+        const li = document.createElement('li');
+        if (myName && r.name.toLowerCase() === myName.toLowerCase()) li.className = 'me';
+        const rank = document.createElement('span'); rank.className = 'rk'; rank.textContent = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = r.name;
+        const sc = document.createElement('b'); sc.textContent = r.score;
+        li.append(rank, nm, sc); el.list.appendChild(li);
+      });
+    }
+    async function load() {
+      if (!api()) return;
+      try { const d = await fetch(api() + '?action=leaderboard').then(r => r.json()); if (d.ok) draw(d.top); } catch (e) {}
+    }
+    function offer(score) {
+      if (score < 1) return;
+      lastScore = score;
+      el.score.textContent = score;
+      el.name.value = myName;
+      el.msg.textContent = '';
+      el.save.disabled = false;
+      el.form.style.display = '';
+    }
+    async function save() {
+      const name = el.name.value.trim();
+      if (!name) { el.msg.textContent = 'Type a name first.'; return; }
+      el.save.disabled = true; el.msg.textContent = 'Saving…';
+      try {
+        const d = await fetch(api(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'score', name, score: lastScore, voter: device() }) }).then(r => r.json());
+        if (!d.ok) throw new Error(d.error);
+        myName = name; LS.set('mb_flappy_name', name);
+        draw(d.top); el.form.style.display = 'none';
+      } catch (e) { el.msg.textContent = e.message || "Couldn't save — try again."; el.save.disabled = false; }
+    }
+    function init(root) {
+      root.innerHTML = `
+        <div class="lb-form" style="display:none">
+          <div>You scored <b class="lb-score"></b>! Put it on the board?</div>
+          <div class="lb-row"><input class="lb-name" maxlength="20" placeholder="Your name"><button class="lb-save">Save score</button></div>
+          <div class="lb-msg"></div>
+        </div>
+        <h4>🏆 Leaderboard</h4>
+        <ol class="lb-list"></ol>`;
+      el = { form: root.querySelector('.lb-form'), score: root.querySelector('.lb-score'), name: root.querySelector('.lb-name'),
+             save: root.querySelector('.lb-save'), msg: root.querySelector('.lb-msg'), list: root.querySelector('.lb-list') };
+      el.save.onclick = save;
+      el.name.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') save(); });
+      load();
+    }
+    return { init, load, offer };
+  })();
+
   /* ============================== GAMES VIEW ============================== */
   let inited = false, current = 'flappy';
   function pick(which) {
@@ -215,13 +278,14 @@
     document.querySelectorAll('.game-pick').forEach(b => b.classList.toggle('on', b.dataset.game === which));
     document.getElementById('gameFlappy').style.display = which === 'flappy' ? '' : 'none';
     document.getElementById('gameClicker').style.display = which === 'clicker' ? '' : 'none';
-    if (which === 'flappy') { Clicker.stop(); Flappy.start(); } else { Flappy.stop(); Clicker.start(); }
+    if (which === 'flappy') { Clicker.stop(); Flappy.start(); Board.load(); } else { Flappy.stop(); Clicker.start(); }
   }
   window.MBGames = {
     show() {
       if (!inited) {
         inited = true;
-        Flappy.init(document.getElementById('flappyCanvas'));
+        Board.init(document.getElementById('flappyBoard'));
+        Flappy.init(document.getElementById('flappyCanvas'), { onOver: s => Board.offer(s) });
         Clicker.init(document.getElementById('clickerRoot'));
         document.querySelectorAll('.game-pick').forEach(b => b.onclick = () => pick(b.dataset.game));
       }

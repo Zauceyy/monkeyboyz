@@ -194,6 +194,23 @@
   .up .c::before{content:"🎧 "}
   .up .o{color:var(--ink2)}
   .clk-shop .reset{all:unset;cursor:pointer;color:var(--ink2);font-size:13px;text-align:center;margin-top:6px}
+  .flappy-wrap{flex-direction:row;align-items:flex-start;justify-content:center;gap:26px;flex-wrap:wrap}
+  .flappy-col{display:flex;flex-direction:column;align-items:center;gap:12px}
+  .lb{background:var(--tile);border-radius:22px;padding:18px 20px;width:min(320px,100%);text-align:left}
+  .lb h4{margin:0 0 10px;font-size:19px}
+  .lb-list{list-style:none;margin:0;padding:0}
+  .lb-list li{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:15px}
+  .lb-list li:last-child{border-bottom:0}
+  .lb-list li.me{font-weight:700}
+  .lb-list li.empty{color:var(--ink2);border:0}
+  .lb-list .rk{width:26px;text-align:center;color:var(--ink2)}
+  .lb-list .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lb-form{background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:16px;font-size:15px}
+  .lb-row{display:flex;gap:8px;margin-top:10px}
+  .lb-name{flex:1;min-width:0;font:inherit;font-size:16px;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+  .lb-save{border:0;border-radius:980px;background:var(--link);color:#fff;font:inherit;font-size:15px;padding:9px 16px;cursor:pointer}
+  .lb-save:disabled{opacity:.5}
+  .lb-msg{color:var(--ink2);font-size:13px;margin-top:6px;min-height:16px}
   @media (max-width:760px){ .clk{grid-template-columns:1fr} }
   /* ---------- dark mode ---------- */
   .theme-btn{background:none;border:0;cursor:pointer;font-size:16px;line-height:1;padding:6px;margin-left:18px;border-radius:50%;color:inherit}
@@ -377,10 +394,13 @@
       <h1 class="h-xl" style="font-size:clamp(44px,7vw,80px)">Monkey business.</h1>
       <div class="game-tabs">
         <button class="game-pick on" data-game="flappy">🐒 Flappy Monkey</button>
-        <button class="game-pick" data-game="clicker">🎧 Bobble Clicker</button>
+        <button class="game-pick" data-game="clicker">🎧 Gerson Bobble</button>
       </div>
-      <div id="gameFlappy" class="game-box"><canvas id="flappyCanvas"></canvas>
-        <p class="upl-note">Tap, click or press Space to flap. Don't hit the trees.</p></div>
+      <div id="gameFlappy" class="game-box flappy-wrap">
+        <div class="flappy-col"><canvas id="flappyCanvas"></canvas>
+          <p class="upl-note">Tap, click or press Space to flap. Don't hit the trees.</p></div>
+        <div class="lb" id="flappyBoard"></div>
+      </div>
       <div id="gameClicker" class="game-box" style="display:none"><div id="clickerRoot"></div></div>
     </div>
   </section>
@@ -434,6 +454,7 @@ const store = {
   get(k){ try { return localStorage.getItem(k); } catch(e) { return null; } },
   set(k,v){ try { localStorage.setItem(k,v); } catch(e) {} },
 };
+window.MB_API = 'https://script.google.com/macros/s/AKfycbxME9lP3-7DGlmyNJtS9ZtMdeTpB_7xPiacksZa9VzDCdeYJZGhFo_6EUK3q1x-SlTf/exec';
 const API = 'https://script.google.com/macros/s/AKfycbxME9lP3-7DGlmyNJtS9ZtMdeTpB_7xPiacksZa9VzDCdeYJZGhFo_6EUK3q1x-SlTf/exec';
 const FALLBACK = {
   round: '2026', votingOpen: true,

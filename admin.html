@@ -173,6 +173,9 @@
       <p class="sub" id="resSub">Live vote totals.</p>
       <button class="btn ghost small" id="refreshRes">Refresh</button>
       <div id="resList" style="margin-top:20px"></div>
+      <h2 style="margin-top:40px">Flappy Monkey leaderboard</h2>
+      <p class="sub">Top 10 names. Remove anyone with a bad name or a fake score.</p>
+      <div id="lbList"></div>
     </section>
 
     <!-- Editors -->
@@ -273,7 +276,7 @@ function show(t){
   document.querySelectorAll('[data-p]').forEach(p => p.classList.toggle('hide', p.dataset.p !== t));
   if (t === 'awards') renderAwards();
   if (t === 'members') renderMembers();
-  if (t === 'results') loadResults();
+  if (t === 'results') { loadResults(); loadBoard(); }
   if (t === 'media') loadPending();
   if (t === 'editors') loadEditors();
 }
@@ -493,7 +496,23 @@ async function loadResults(){
     });
   } catch (e) { box.textContent = e.message; }
 }
-$('refreshRes').onclick = loadResults;
+$('refreshRes').onclick = () => { loadResults(); loadBoard(); };
+async function loadBoard(){
+  const box = $('lbList'); box.textContent = 'Loading…';
+  try { const d = await fetch(API + '?action=leaderboard').then(r => r.json()); drawBoard(d.top || []); } catch (e) { box.textContent = 'Could not load'; }
+}
+function drawBoard(top){
+  const box = $('lbList'); box.innerHTML = '';
+  if (!top.length) { box.appendChild(el('p', null, 'No scores yet.')).style.color = 'var(--ink2)'; return; }
+  top.forEach((r, i) => {
+    const card = el('div','card'), row = el('div','row');
+    row.append(el('b', null, '#' + (i + 1)), el('span','grow', r.name), el('b', null, r.score + ' pts'));
+    const del = el('button','btn danger small','Remove');
+    del.onclick = async () => { if (!confirm(`Remove ${r.name} from the leaderboard?`)) return;
+      try { drawBoard((await call('removeScore', { name: r.name })).top); toast('Removed'); } catch (e) { toast(e.message); } };
+    row.appendChild(del); card.appendChild(row); box.appendChild(card);
+  });
+}
 
 /* ---------------- editors ---------------- */
 async function loadEditors(){
