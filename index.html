@@ -72,8 +72,8 @@
 
   .gallery{display:flex;gap:20px;overflow-x:auto;scroll-snap-type:x mandatory;padding:46px max(22px,calc((100vw - 1000px)/2)) 20px;scrollbar-width:none}
   .gallery::-webkit-scrollbar{display:none}
-  .card{flex:0 0 auto;width:340px;scroll-snap-align:center}
-  .card .ph{border-radius:22px;overflow:hidden;background:#e8e8ed;aspect-ratio:4/5}
+  .card{flex:0 0 auto;width:260px;scroll-snap-align:center}
+  .card .ph{border-radius:22px;overflow:hidden;background:#e8e8ed;aspect-ratio:1/1}
   .card .ph img{width:100%;height:100%;object-fit:cover;transition:transform .6s ease}
   .card:hover .ph img{transform:scale(1.04)}
   .card h4{font-size:21px;font-weight:600;margin:16px 4px 4px}
@@ -104,11 +104,11 @@
   .cats{max-width:1000px;margin:0 auto;padding:30px 22px 20px;display:flex;flex-direction:column;gap:64px}
   .cat h3{font-size:28px;font-weight:700;letter-spacing:-.02em;margin:0}
   .cat .desc{color:#86868b;margin:6px 0 20px;font-size:17px}
-  .noms{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+  .noms{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
   .nom{position:relative;background:#1d1d1f;border:0;border-radius:18px;padding:0;cursor:pointer;text-align:left;color:#f5f5f7;font:inherit;overflow:hidden;
        transition:transform .2s, box-shadow .2s;box-shadow:0 0 0 1px rgba(255,255,255,.06)}
   .nom:hover{transform:scale(1.02)}
-  .nom .art{aspect-ratio:16/10;background:linear-gradient(135deg,#2a2a2d,#161617);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;color:#3a3a3c}
+  .nom .art{aspect-ratio:1/1;background:linear-gradient(135deg,#2a2a2d,#161617);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;color:#3a3a3c}
   .nom .art img{width:100%;height:100%;object-fit:cover}
   .nom .nm{padding:14px 16px 16px;font-weight:600;font-size:17px}
   .nom .nm small{display:block;font-weight:400;color:#86868b;margin-top:2px;font-size:14px}
@@ -129,6 +129,16 @@
   .modal li span:first-child{color:#86868b}
   .modal li span:last-child{font-weight:600}
 
+  .voted{max-width:520px;margin:0 auto;padding:10px 22px 110px;text-align:center;display:none}
+  .voted.show{display:block}
+  .voted .box{background:#1d1d1f;border-radius:22px;padding:30px}
+  .voted h3{font-size:28px;margin:6px 0 4px}
+  .voted p{color:#86868b;margin:0 0 18px}
+  .voted ul,.modal ul{list-style:none;padding:0;margin:0;text-align:left}
+  .voted li{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #333336;font-size:15px}
+  .voted li span:first-child{color:#86868b} .voted li span:last-child{font-weight:600}
+  .row-btns{display:flex;gap:10px;justify-content:center}
+  .pill.ghost{background:#333336;color:#f5f5f7;border:0;cursor:pointer;font:inherit;font-size:17px}
   /* ---------- discord ---------- */
   .dc{text-align:center;padding:110px 22px 120px}
   .dc-icon{width:88px;height:88px;border-radius:24px;background:#5865f2;margin:0 auto 26px;display:flex;align-items:center;justify-content:center}
@@ -211,14 +221,9 @@
   <section class="sec" style="padding-bottom:70px">
     <div class="wrap reveal">
       <h2 class="h-l">Meet the troop.</h2>
+      <p class="lede" style="margin-left:0">The nine MonkeyBoyz.</p>
     </div>
-    <div class="gallery" id="gallery">
-      <div class="card"><div class="ph"><img loading="lazy" src="https://commons.wikimedia.org/wiki/Special:FilePath/013_Alpha_male_chimpanzee_at_Kibale_forest_National_Park_Photo_by_Giles_Laurent.jpg?width=800" alt="Chimpanzee"></div><h4>The Alpha</h4><p>Thinks he's in charge. He isn't.</p></div>
-      <div class="card"><div class="ph"><img loading="lazy" src="https://commons.wikimedia.org/wiki/Special:FilePath/Rhesus_macaque_(Macaca_mulatta_mulatta),_male,_Gokarna.jpg?width=800" alt="Rhesus macaque"></div><h4>The Sore Loser</h4><p>Has never once taken an L quietly.</p></div>
-      <div class="card"><div class="ph"><img loading="lazy" src="https://commons.wikimedia.org/wiki/Special:FilePath/Cute_Monkey_cropped.jpg?width=800" alt="Bonnet macaque"></div><h4>The Innocent One</h4><p>Looks harmless. Started every fight.</p></div>
-      <div class="card"><div class="ph"><img loading="lazy" src="https://commons.wikimedia.org/wiki/Special:FilePath/Common_chimpanzee_(Pan_troglodytes_schweinfurthii)_feeding.jpg?width=800" alt="Chimpanzee eating"></div><h4>The Snack Thief</h4><p>Your food is his food.</p></div>
-      <div class="card"><div class="ph"><img loading="lazy" src="https://commons.wikimedia.org/wiki/Special:FilePath/Olive_baboon_Ngorongoro.jpg?width=800" alt="Olive baboon"></div><h4>The Thinker</h4><p>Plans the bit. Ruins the bit.</p></div>
-    </div>
+    <div class="gallery" id="gallery"></div>
     <div class="gnav"><button aria-label="Previous" onclick="slide(-1)">‹</button><button aria-label="Next" onclick="slide(1)">›</button></div>
   </section>
 
@@ -247,6 +252,14 @@
     <button class="pill gold" id="submit" disabled>Submit ballot</button>
     <div class="note" id="note"></div>
   </div>
+  <div class="voted" id="voted">
+    <div class="box">
+      <div style="font-size:54px">✅</div>
+      <h3>You've voted.</h3>
+      <p>Thanks! Each person gets one ballot. Here's yours:</p>
+      <ul id="myballot"></ul>
+    </div>
+  </div>
 </main>
 
 <!-- ================= DISCORD ================= -->
@@ -268,10 +281,7 @@
   <div class="wrap">
     <div class="credits">Extra monkey photos from Wikimedia Commons (CC BY-SA):
       <a href="https://commons.wikimedia.org/wiki/File:013_Alpha_male_chimpanzee_at_Kibale_forest_National_Park_Photo_by_Giles_Laurent.jpg" target="_blank" rel="noopener">Giles Laurent</a>,
-      <a href="https://commons.wikimedia.org/wiki/File:Common_chimpanzee_(Pan_troglodytes_schweinfurthii)_feeding.jpg" target="_blank" rel="noopener">Charles J. Sharp</a>,
       <a href="https://commons.wikimedia.org/wiki/File:Rhesus_macaque_(Macaca_mulatta_mulatta),_male,_Gokarna.jpg" target="_blank" rel="noopener">Charles J. Sharp</a>,
-      <a href="https://commons.wikimedia.org/wiki/File:Cute_Monkey_cropped.jpg" target="_blank" rel="noopener">bonnet macaque</a>,
-      <a href="https://commons.wikimedia.org/wiki/File:Olive_baboon_Ngorongoro.jpg" target="_blank" rel="noopener">Muhammad Mahdi Karim</a>,
       <a href="https://commons.wikimedia.org/wiki/File:Tufted_capuchin_on_a_branch_in_Singapore.jpg" target="_blank" rel="noopener">tufted capuchin</a>.
     </div>
     Copyright © <span class="yr"></span> MonkeyBoyz. &nbsp;·&nbsp;
@@ -283,30 +293,43 @@
 <div class="modal" id="modal">
   <div class="box">
     <div style="font-size:54px">🏆</div>
-    <h4>Your ballot.</h4>
+    <h4>Lock in your ballot?</h4>
     <ul id="summary"></ul>
-    <button class="pill gold" id="close">Done</button>
+    <p style="color:#86868b;font-size:14px;margin:0 0 20px">You can only vote once. This can't be changed after you submit.</p>
+    <div class="row-btns"><button class="pill ghost" id="back">Go back</button><button class="pill gold" id="confirm">Submit vote</button></div>
   </div>
 </div>
 
 <script>
 /* =====================================================================
-   AWARDS SETUP — edit this list to add your real categories & nominees.
-   For a nominee picture, add  img: "pics/whatever.jpg"  next to the name.
+   MEMBERS — in order. Picture files live in the members/ folder.
    ===================================================================== */
+const MEMBERS = [
+  { name: "Armen",    img: "members/armen.webp" },
+  { name: "Zay",      img: "members/zay.webp" },
+  { name: "Blackdog", img: "members/blackdog.webp" },
+  { name: "Dylan",    img: "members/dylan.webp" },
+  { name: "Geordie",  img: "members/geordie.webp" },
+  { name: "Kansas",   img: "members/kansas.webp" },
+  { name: "Erick",    img: "members/erick.webp" },
+  { name: "Freddy",   img: "members/freddy.webp" },
+  { name: "Gerson",   img: "members/gerson.webp" },
+];
+
+/* =====================================================================
+   AWARDS — edit titles/descriptions here. Every category lists all the
+   members (in the order above). To use a custom list for one category,
+   replace  nominees: MEMBERS  with  nominees: [{name:"..."}, ...]
+   Change BALLOT_ID (e.g. "2027") to start a fresh vote for everyone.
+   ===================================================================== */
+const BALLOT_ID = "2026";
 const CATEGORIES = [
-  { title: "Most Embarrassing Moment", desc: "The one we'll never let them live down.",
-    nominees: [{name:"Nominee 1"},{name:"Nominee 2"},{name:"Nominee 3"},{name:"Nominee 4"}] },
-  { title: "Biggest Freak", desc: "Self-explanatory.",
-    nominees: [{name:"Nominee 1"},{name:"Nominee 2"},{name:"Nominee 3"},{name:"Nominee 4"}] },
-  { title: "Clip of the Year", desc: "The best clip from the whole year.",
-    nominees: [{name:"Nominee 1"},{name:"Nominee 2"},{name:"Nominee 3"},{name:"Nominee 4"}] },
-  { title: "Sorest Loser", desc: "Lost the challenge and lost their mind.",
-    nominees: [{name:"Nominee 1"},{name:"Nominee 2"},{name:"Nominee 3"},{name:"Nominee 4"}] },
-  { title: "Video of the Year", desc: "The best MonkeyBoyz upload.",
-    nominees: [{name:"Nominee 1"},{name:"Nominee 2"},{name:"Nominee 3"},{name:"Nominee 4"}] },
-  { title: "Monkey of the Year", desc: "The MVP. The GOAT. The top banana.",
-    nominees: [{name:"Nominee 1"},{name:"Nominee 2"},{name:"Nominee 3"},{name:"Nominee 4"}] },
+  { title: "Most Embarrassing Moment", desc: "The one we'll never let them live down.", nominees: MEMBERS },
+  { title: "Biggest Freak",            desc: "Self-explanatory.",                       nominees: MEMBERS },
+  { title: "Sorest Loser",             desc: "Lost the challenge and lost their mind.",  nominees: MEMBERS },
+  { title: "Funniest Monkey",          desc: "Always has the room dying.",               nominees: MEMBERS },
+  { title: "Biggest Yapper",           desc: "Will not stop talking. Ever.",             nominees: MEMBERS },
+  { title: "Monkey of the Year",       desc: "The MVP. The GOAT. The top banana.",       nominees: MEMBERS },
 ];
 
 /* ---------- tabs ---------- */
@@ -331,48 +354,87 @@ function observe(){
 function slide(d){ const g = document.getElementById('gallery'); g.scrollBy({left: d * 360, behavior:'smooth'}); }
 addEventListener('hashchange', route); route();
 
-/* ---------- voting ---------- */
+/* ---------- meet the troop ---------- */
+const gal = document.getElementById('gallery');
+MEMBERS.forEach(m => {
+  const c = document.createElement('div'); c.className = 'card';
+  c.innerHTML = '<div class="ph"><img loading="lazy" alt=""></div><h4></h4>';
+  c.querySelector('img').src = m.img; c.querySelector('img').alt = m.name;
+  c.querySelector('h4').textContent = m.name;
+  gal.appendChild(c);
+});
+
+/* ---------- voting (one ballot per person) ---------- */
+const KEY_DRAFT = 'mb_draft_' + BALLOT_ID, KEY_DONE = 'mb_voted_' + BALLOT_ID;
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e) { return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e) {} },
+};
+function cookieGet(k){ return document.cookie.split('; ').find(c => c.startsWith(k + '='))?.split('=').slice(1).join('='); }
+function cookieSet(k,v){ document.cookie = k + '=' + v + '; max-age=31536000; path=/; SameSite=Lax'; }
+function finalBallot(){
+  const raw = store.get(KEY_DONE) || (cookieGet(KEY_DONE) ? decodeURIComponent(cookieGet(KEY_DONE)) : null);
+  try { return raw ? JSON.parse(raw) : null; } catch(e) { return raw ? {} : null; }
+}
 let picks = {};
-try { picks = JSON.parse(localStorage.getItem('mb_ballot') || '{}'); } catch(e) {}
+try { picks = JSON.parse(store.get(KEY_DRAFT) || '{}'); } catch(e) {}
+let locked = !!finalBallot();
+
 const catsEl = document.getElementById('cats');
 CATEGORIES.forEach((c) => {
   const sec = document.createElement('section'); sec.className = 'cat';
-  sec.innerHTML = `<h3></h3><p class="desc"></p><div class="noms"></div>`;
+  sec.innerHTML = '<h3></h3><p class="desc"></p><div class="noms"></div>';
   sec.querySelector('h3').textContent = c.title;
   sec.querySelector('.desc').textContent = c.desc || '';
   const noms = sec.querySelector('.noms');
   c.nominees.forEach((n, ni) => {
     const b = document.createElement('button'); b.className = 'nom'; b.type = 'button';
-    b.innerHTML = `<div class="art"></div><div class="nm"></div><div class="check">✓</div>`;
+    b.innerHTML = '<div class="art"></div><div class="nm"></div><div class="check">✓</div>';
     const art = b.querySelector('.art');
-    if (n.img) { const im = new Image(); im.src = n.img; im.alt = ''; art.appendChild(im); } else art.textContent = ni + 1;
+    if (n.img) { const im = new Image(); im.src = n.img; im.alt = ''; im.loading = 'lazy'; art.appendChild(im); } else art.textContent = ni + 1;
     b.querySelector('.nm').textContent = n.name;
-    if (n.sub) { const s = document.createElement('small'); s.textContent = n.sub; b.querySelector('.nm').appendChild(s); }
     if (picks[c.title] === n.name) b.classList.add('sel');
     b.onclick = () => {
+      if (locked) return;
       noms.querySelectorAll('.nom').forEach(x => x.classList.remove('sel'));
-      b.classList.add('sel'); picks[c.title] = n.name; save(); update();
+      b.classList.add('sel'); picks[c.title] = n.name; store.set(KEY_DRAFT, JSON.stringify(picks)); update();
     };
     noms.appendChild(b);
   });
   catsEl.appendChild(sec);
 });
-function save(){ try { localStorage.setItem('mb_ballot', JSON.stringify(picks)); } catch(e) {} }
+function fillList(ul, ballot){
+  ul.innerHTML = '';
+  CATEGORIES.forEach(c => { if (!ballot[c.title]) return; const li = document.createElement('li');
+    li.innerHTML = '<span></span><span></span>'; li.children[0].textContent = c.title; li.children[1].textContent = ballot[c.title]; ul.appendChild(li); });
+}
 function update(){
   const done = CATEGORIES.filter(c => picks[c.title]).length;
-  document.getElementById('fill').style.width = (done / CATEGORIES.length * 100) + '%';
-  document.getElementById('plbl').textContent = `${done} of ${CATEGORIES.length} categories`;
+  document.getElementById('fill').style.width = (locked ? 100 : done / CATEGORIES.length * 100) + '%';
+  document.getElementById('plbl').textContent = locked ? 'Ballot submitted' : `${done} of ${CATEGORIES.length} categories`;
   document.getElementById('submit').disabled = done < CATEGORIES.length;
-  document.getElementById('note').textContent = done < CATEGORIES.length ? 'Pick a nominee in every category to submit.' : '';
+  document.getElementById('note').textContent = done < CATEGORIES.length ? 'Pick a nominee in every category to submit.' : 'You only get one vote, so make it count.';
+  if (locked) {
+    catsEl.style.display = 'none';
+    document.querySelector('.submit-row').style.display = 'none';
+    fillList(document.getElementById('myballot'), finalBallot() || {});
+    document.getElementById('voted').classList.add('show');
+  }
 }
 update();
 document.getElementById('submit').onclick = () => {
-  const ul = document.getElementById('summary'); ul.innerHTML = '';
-  CATEGORIES.forEach(c => { const li = document.createElement('li');
-    li.innerHTML = '<span></span><span></span>'; li.children[0].textContent = c.title; li.children[1].textContent = picks[c.title]; ul.appendChild(li); });
+  if (locked) return;
+  fillList(document.getElementById('summary'), picks);
   document.getElementById('modal').classList.add('show');
 };
-document.getElementById('close').onclick = () => document.getElementById('modal').classList.remove('show');
+document.getElementById('back').onclick = () => document.getElementById('modal').classList.remove('show');
+document.getElementById('confirm').onclick = () => {
+  const ballot = JSON.stringify(picks);
+  store.set(KEY_DONE, ballot); cookieSet(KEY_DONE, encodeURIComponent(ballot));
+  locked = true;
+  document.getElementById('modal').classList.remove('show');
+  update(); window.scrollTo({top:0, behavior:'smooth'});
+};
 </script>
 </body>
 </html>
