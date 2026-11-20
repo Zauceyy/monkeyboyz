@@ -153,6 +153,11 @@
         <h3 style="margin:22px 0 10px">Waiting for approval</h3>
         <div id="pendList"></div>
       </div>
+      <div class="card">
+        <b>Shorts topics</b> <span class="pill-note" id="ytKey">checking…</span>
+        <div style="color:var(--ink2);font-size:14px;margin:4px 0 10px">What random Shorts to show on the Videos page. Separate topics with commas (up to 8). New topics show up within the hour.</div>
+        <input class="field" id="shortsTopics" placeholder="funny gaming, minecraft funny, memes" style="margin:0">
+      </div>
       <h3 style="margin:22px 0 10px">On the site</h3>
       <div class="addbox">
         <b>Add something</b>
@@ -277,7 +282,7 @@ function show(t){
   if (t === 'awards') renderAwards();
   if (t === 'members') renderMembers();
   if (t === 'results') { loadResults(); loadBoard(); }
-  if (t === 'media') loadPending();
+  if (t === 'media') { loadPending(); checkKey(); }
   if (t === 'editors') loadEditors();
 }
 $('tabs').onclick = e => { const b = e.target.closest('.tab'); if (b) show(b.dataset.t); };
@@ -404,6 +409,12 @@ function renderAwards(){
 $('votingOpen').onchange = () => { C.votingOpen = $('votingOpen').checked; dirty(); };
 $('allowWriteIns').onchange = () => { C.allowWriteIns = $('allowWriteIns').checked; dirty(); };
 $('requireApproval').onchange = () => { C.requireApproval = $('requireApproval').checked; dirty(); };
+$('shortsTopics').oninput = () => { C.shortsTopics = $('shortsTopics').value.split(',').map(t => t.trim()).filter(Boolean).slice(0, 8); dirty(); };
+async function checkKey(){
+  try { const d = await fetch(API + '?action=shorts').then(r => r.json());
+    $('ytKey').textContent = d.hasKey ? 'YouTube key connected ✓' : 'No YouTube key yet — only your Shorts show'; }
+  catch (e) { $('ytKey').textContent = 'could not check'; }
+}
 $('addCat').onclick = () => { C.categories.push({ title: 'New award', desc: '', nominees: 'all' }); render(); dirty(); };
 $('newRound').onclick = async () => {
   if (JSON.stringify(C) !== saved) { toast('Save or discard your changes first'); return; }
@@ -432,6 +443,7 @@ function preview(m){
 }
 function renderMedia(){
   $('requireApproval').checked = C.requireApproval !== false;
+  if (document.activeElement !== $('shortsTopics')) $('shortsTopics').value = (C.shortsTopics || ['funny gaming', 'minecraft funny', 'memes']).join(', ');
   const box = $('mediaList'); box.innerHTML = '';
   if (!C.media.length) box.appendChild(el('p', null, 'Nothing here yet.')).style.color = 'var(--ink2)';
   C.media.forEach((m, i) => {
