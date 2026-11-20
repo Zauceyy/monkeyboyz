@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>MonkeyBoyz · Editor</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#1d1d1f;--ink2:#6e6e73;--bg:#f5f5f7;--card:#fff;--line:#d2d2d7;--blue:#0071e3;--red:#e3342f;--green:#1f9d55;--gold:#c9a24a}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:var(--blue);text-decoration:none}
+  button{font:inherit;cursor:pointer}
+  input,textarea,select{font:inherit;color:inherit}
+  .hide{display:none!important}
+
+  /* login */
+  .login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .login .box{background:var(--card);border-radius:22px;padding:36px 32px;width:100%;max-width:380px;box-shadow:0 10px 40px rgba(0,0,0,.06);text-align:center}
+  .login h1{font-size:28px;margin:8px 0 4px;letter-spacing:-.02em}
+  .login p{color:var(--ink2);margin:0 0 22px;font-size:15px}
+  .field{display:block;width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;margin-bottom:10px;font-size:16px}
+  .field:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,113,227,.18)}
+  .btn{border:0;border-radius:980px;padding:11px 20px;font-size:15px;font-weight:500;background:var(--blue);color:#fff;transition:filter .15s}
+  .btn:hover{filter:brightness(1.08)} .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.wide{width:100%;padding:13px}
+  .btn.ghost{background:#e8e8ed;color:var(--ink)}
+  .btn.danger{background:#fdecea;color:var(--red)}
+  .btn.small{padding:7px 13px;font-size:13px}
+  .err{color:var(--red);font-size:14px;min-height:20px;margin-top:8px}
+  .linkbtn{background:none;border:0;color:var(--blue);font-size:14px;margin-top:14px}
+
+  /* app */
+  header{position:sticky;top:0;z-index:20;background:rgba(251,251,253,.85);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid rgba(0,0,0,.08)}
+  .bar{max-width:1000px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .brand{font-weight:600;font-size:17px;color:var(--ink)}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+  .tab{background:none;border:0;padding:7px 12px;border-radius:980px;font-size:14px;color:var(--ink2)}
+  .tab.on{background:var(--ink);color:#fff}
+  main{max-width:1000px;margin:0 auto;padding:28px 20px 140px}
+  h2{font-size:32px;letter-spacing:-.025em;margin:0 0 6px}
+  .sub{color:var(--ink2);margin:0 0 22px}
+  .card{background:var(--card);border-radius:18px;padding:18px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .thumb{width:72px;height:72px;border-radius:14px;object-fit:cover;background:#e8e8ed;flex:none}
+  .grow{flex:1;min-width:180px}
+  .mini{display:flex;gap:6px}
+  .icon{width:34px;height:34px;border-radius:50%;border:0;background:#e8e8ed;font-size:15px}
+  .icon:hover{background:#dcdce1}
+  .icon.del:hover{background:#fdecea;color:var(--red)}
+  label.chk{display:inline-flex;align-items:center;gap:6px;font-size:14px;background:#f5f5f7;border-radius:980px;padding:6px 11px;margin:4px 4px 0 0;cursor:pointer}
+  .noms{margin-top:10px}
+  .toggle{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .switch{position:relative;width:51px;height:31px;flex:none}
+  .switch input{opacity:0;width:0;height:0}
+  .switch span{position:absolute;inset:0;background:#e9e9ea;border-radius:31px;transition:.2s}
+  .switch span::after{content:"";position:absolute;width:27px;height:27px;left:2px;top:2px;background:#fff;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:.2s}
+  .switch input:checked+span{background:#34c759}
+  .switch input:checked+span::after{transform:translateX(20px)}
+  .media-prev{width:160px;height:100px;border-radius:12px;background:#000;overflow:hidden;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px}
+  .media-prev img{width:100%;height:100%;object-fit:cover}
+  .media-prev iframe{width:100%;height:100%;border:0;pointer-events:none}
+  .addbox{border:2px dashed var(--line);border-radius:18px;padding:18px;margin-bottom:16px;background:#fff}
+  .res-cat{margin-bottom:22px}
+  .res-cat h3{margin:0 0 10px;font-size:19px}
+  .res-row{display:grid;grid-template-columns:110px 1fr 40px;align-items:center;gap:10px;margin:6px 0;font-size:14px}
+  .res-bar{height:10px;border-radius:9px;background:#e8e8ed;overflow:hidden}
+  .res-bar div{height:100%;background:linear-gradient(90deg,#c9a24a,#f5e6b3);border-radius:9px}
+  .savebar{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#1d1d1f;color:#fff;border-radius:980px;padding:10px 10px 10px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:40;font-size:14px}
+  .toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#1d1d1f;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.3s;pointer-events:none;z-index:60}
+  .toast.show{opacity:1}
+  .pill-note{display:inline-block;font-size:12px;background:#f5e6b3;color:#6b5418;border-radius:980px;padding:3px 9px;margin-left:6px}
+  .progress{font-size:13px;color:var(--ink2);margin-top:8px}
+  @media (max-width:640px){ .media-prev{width:100%;height:180px} .res-row{grid-template-columns:90px 1fr 32px} }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<section class="login" id="loginView">
+  <div class="box">
+    <div style="font-size:44px">🐒</div>
+    <h1 id="loginTitle">MonkeyBoyz Editor</h1>
+    <p id="loginSub">Log in to edit the site.</p>
+    <form id="loginForm">
+      <input class="field hide" id="setupCode" placeholder="Setup code" autocomplete="off">
+      <input class="field" id="user" placeholder="Username" autocomplete="username" autocapitalize="none">
+      <input class="field" id="pass" type="password" placeholder="Password" autocomplete="current-password">
+      <button class="btn wide" id="loginBtn">Log in</button>
+    </form>
+    <div class="err" id="loginErr"></div>
+    <button class="linkbtn" id="setupToggle">First time? Set up the owner account</button>
+    <div style="margin-top:18px"><a href="./">← Back to site</a></div>
+  </div>
+</section>
+
+<!-- ============ APP ============ -->
+<div id="appView" class="hide">
+  <header>
+    <div class="bar">
+      <span class="brand">🐒 MonkeyBoyz Editor</span>
+      <a href="./" target="_blank" style="font-size:14px">View site ↗</a>
+      <nav class="tabs" id="tabs">
+        <button class="tab" data-t="members">Members</button>
+        <button class="tab" data-t="awards">Awards</button>
+        <button class="tab" data-t="media">GIFs &amp; Videos</button>
+        <button class="tab" data-t="results">Results</button>
+        <button class="tab" data-t="editors" id="editorsTab">Editors</button>
+        <button class="tab" data-t="account">Account</button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Members -->
+    <section data-p="members">
+      <h2>Members</h2>
+      <p class="sub">Shown in this order on the home page and in every award.</p>
+      <div id="membersList"></div>
+      <button class="btn ghost" id="addMember">+ Add member</button>
+    </section>
+
+    <!-- Awards -->
+    <section data-p="awards" class="hide">
+      <h2>Awards</h2>
+      <p class="sub">Categories people vote on. Round: <b id="roundName"></b></p>
+      <div class="card toggle">
+        <div><b>Voting open</b><div style="color:var(--ink2);font-size:14px">When off, the Vote page shows "Voting is closed".</div></div>
+        <label class="switch"><input type="checkbox" id="votingOpen"><span></span></label>
+      </div>
+      <div id="catsList"></div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn ghost" id="addCat">+ Add category</button>
+        <button class="btn danger" id="newRound" style="margin-left:auto">Start a new voting round</button>
+      </div>
+      <p style="color:var(--ink2);font-size:13px;margin-top:10px">A new round resets the vote: everyone can vote again and results start from zero. Old ballots stay saved in the sheet.</p>
+    </section>
+
+    <!-- Media -->
+    <section data-p="media" class="hide">
+      <h2>GIFs &amp; Videos</h2>
+      <p class="sub">Shown in the "Clips &amp; GIFs" section on the home page.</p>
+      <div class="addbox">
+        <b>Add something</b>
+        <div class="row" style="margin-top:12px">
+          <label class="btn" style="display:inline-block">Upload file<input type="file" id="mediaFile" accept="image/*,video/*" hidden></label>
+          <span style="color:var(--ink2);font-size:14px">or</span>
+          <input class="field grow" id="mediaLink" placeholder="Paste a YouTube link or a GIF/image link" style="margin:0">
+          <button class="btn ghost" id="addLink">Add link</button>
+        </div>
+        <div class="progress" id="mediaProgress">Pictures, GIFs and videos up to 30 MB. For longer videos, upload to YouTube and paste the link.</div>
+      </div>
+      <div id="mediaList"></div>
+    </section>
+
+    <!-- Results -->
+    <section data-p="results" class="hide">
+      <h2>Results</h2>
+      <p class="sub" id="resSub">Live vote totals.</p>
+      <button class="btn ghost small" id="refreshRes">Refresh</button>
+      <div id="resList" style="margin-top:20px"></div>
+    </section>
+
+    <!-- Editors -->
+    <section data-p="editors" class="hide">
+      <h2>Editors</h2>
+      <p class="sub">People who can log in here. Only owners can add or remove editors.</p>
+      <div id="editorsList"></div>
+      <div class="card">
+        <b>Add an editor</b>
+        <div class="row" style="margin-top:12px">
+          <input class="field grow" id="newUser" placeholder="Username" autocapitalize="none" style="margin:0">
+          <input class="field grow" id="newPass" placeholder="Password (6+ characters)" style="margin:0">
+          <select class="field" id="newRole" style="margin:0;width:auto"><option value="editor">Editor</option><option value="owner">Owner</option></select>
+          <button class="btn" id="addEditor">Add</button>
+        </div>
+        <p style="color:var(--ink2);font-size:13px;margin:10px 0 0">Send them the username and password privately. They can change the password under Account.</p>
+      </div>
+    </section>
+
+    <!-- Account -->
+    <section data-p="account" class="hide">
+      <h2>Account</h2>
+      <p class="sub">Logged in as <b id="meName"></b> <span class="pill-note" id="meRole"></span></p>
+      <div class="card" style="max-width:420px">
+        <b>Change password</b>
+        <input class="field" id="oldPass" type="password" placeholder="Current password" style="margin-top:12px" autocomplete="current-password">
+        <input class="field" id="newPass2" type="password" placeholder="New password (6+ characters)" autocomplete="new-password">
+        <button class="btn" id="changePass">Change password</button>
+      </div>
+      <button class="btn ghost" id="logout">Log out</button>
+    </section>
+  </main>
+
+  <div class="savebar hide" id="savebar">
+    <span>Unsaved changes</span>
+    <button class="btn ghost small" id="discard" style="background:#3a3a3c;color:#fff">Discard</button>
+    <button class="btn small" id="save">Save &amp; publish</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbxME9lP3-7DGlmyNJtS9ZtMdeTpB_7xPiacksZa9VzDCdeYJZGhFo_6EUK3q1x-SlTf/exec';
+const $ = id => document.getElementById(id);
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+const ss = { get(k){ try { return sessionStorage.getItem(k); } catch(e) { return null; } }, set(k,v){ try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k,v); } catch(e) {} } };
+
+let token = ss.get('mb_token'), me = null, C = null, saved = null, setupMode = false;
+
+function toast(t){ const e = $('toast'); e.textContent = t; e.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => e.classList.remove('show'), 2600); }
+async function call(action, data = {}){
+  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ action, token }, data)) });
+  const d = await r.json();
+  if (!d.ok && d.error === 'not logged in') { logoutLocal(); throw new Error('Your login expired. Log in again.'); }
+  if (!d.ok) throw new Error(d.error || 'something went wrong');
+  return d;
+}
+
+/* ---------------- login ---------------- */
+$('setupToggle').onclick = () => {
+  setupMode = !setupMode;
+  $('setupCode').classList.toggle('hide', !setupMode);
+  $('loginTitle').textContent = setupMode ? 'Set up owner' : 'MonkeyBoyz Editor';
+  $('loginSub').textContent = setupMode ? 'Enter the setup code, then pick your username and password.' : 'Log in to edit the site.';
+  $('loginBtn').textContent = setupMode ? 'Create owner account' : 'Log in';
+  $('pass').autocomplete = setupMode ? 'new-password' : 'current-password';
+  $('setupToggle').textContent = setupMode ? 'Back to log in' : 'First time? Set up the owner account';
+  $('loginErr').textContent = '';
+};
+$('loginForm').onsubmit = async e => {
+  e.preventDefault();
+  $('loginErr').textContent = ''; $('loginBtn').disabled = true;
+  try {
+    const d = await call(setupMode ? 'setup' : 'login', { user: $('user').value, pass: $('pass').value, code: $('setupCode').value.trim().toUpperCase() });
+    token = d.token; me = d.user; ss.set('mb_token', token); ss.set('mb_me', JSON.stringify(me));
+    $('pass').value = '';
+    await enter();
+  } catch (err) { $('loginErr').textContent = err.message; }
+  finally { $('loginBtn').disabled = false; }
+};
+function logoutLocal(){ token = null; me = null; ss.set('mb_token', null); ss.set('mb_me', null); $('appView').classList.add('hide'); $('loginView').classList.remove('hide'); }
+$('logout').onclick = async () => { try { await call('logout'); } catch(e) {} logoutLocal(); };
+
+async function enter(){
+  if (!me) { const d = await call('me'); me = d.user; ss.set('mb_me', JSON.stringify(me)); }
+  const r = await fetch(API + '?action=content'); const d = await r.json();
+  C = JSON.parse(JSON.stringify(d.content)); saved = JSON.stringify(C);
+  $('loginView').classList.add('hide'); $('appView').classList.remove('hide');
+  $('meName').textContent = me.name; $('meRole').textContent = me.role;
+  $('editorsTab').classList.toggle('hide', me.role !== 'owner');
+  render(); show('members');
+}
+
+/* ---------------- tabs & save bar ---------------- */
+function show(t){
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  document.querySelectorAll('[data-p]').forEach(p => p.classList.toggle('hide', p.dataset.p !== t));
+  if (t === 'awards') renderAwards();
+  if (t === 'members') renderMembers();
+  if (t === 'results') loadResults();
+  if (t === 'editors') loadEditors();
+}
+$('tabs').onclick = e => { const b = e.target.closest('.tab'); if (b) show(b.dataset.t); };
+function dirty(){ $('savebar').classList.toggle('hide', JSON.stringify(C) === saved); }
+$('discard').onclick = () => { C = JSON.parse(saved); render(); dirty(); };
+$('save').onclick = async () => {
+  $('save').disabled = true; $('save').textContent = 'Saving…';
+  try { const d = await call('save', { content: C }); C = d.content; saved = JSON.stringify(C); render(); dirty(); toast('Saved — the site is updated'); }
+  catch (e) { toast(e.message); }
+  finally { $('save').disabled = false; $('save').textContent = 'Save & publish'; }
+};
+window.addEventListener('beforeunload', e => { if (C && JSON.stringify(C) !== saved) { e.preventDefault(); e.returnValue = ''; } });
+
+function move(arr, i, d){ const j = i + d; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; render(); dirty(); }
+function mini(arr, i){
+  const m = el('div','mini');
+  [['↑', -1], ['↓', 1]].forEach(([t, d]) => { const b = el('button','icon', t); b.title = d < 0 ? 'Move up' : 'Move down'; b.onclick = () => move(arr, i, d); m.appendChild(b); });
+  const del = el('button','icon del','✕'); del.title = 'Delete';
+  del.onclick = () => { if (confirm('Delete this?')) { arr.splice(i, 1); render(); dirty(); } };
+  m.appendChild(del); return m;
+}
+function input(val, ph, on){ const i = el('input','field'); i.value = val || ''; i.placeholder = ph; i.style.margin = '0'; i.oninput = () => { on(i.value); dirty(); }; return i; }
+
+/* ---------------- file upload ---------------- */
+function readB64(file){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(file); }); }
+async function shrinkImage(file){
+  // Keep GIFs (animation) and small files as they are; resize big photos to save space.
+  if (file.type === 'image/gif' || !file.type.startsWith('image/') || file.size < 600 * 1024) return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * scale); cv.height = Math.round(bmp.height * scale);
+    cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', .86));
+    return blob ? new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : file;
+  } catch (e) { return file; }
+}
+async function uploadFile(file, status){
+  if (!/^(image|video)\//.test(file.type)) throw new Error('Pick a picture, GIF or video');
+  file = await shrinkImage(file);
+  if (file.size > 30 * 1024 * 1024) throw new Error('That file is over 30 MB. Upload long videos to YouTube and paste the link instead.');
+  status && status(`Uploading ${file.name}…`);
+  const data = await readB64(file);
+  return call('upload', { name: file.name, mime: file.type, data });
+}
+
+/* ---------------- members ---------------- */
+function renderMembers(){
+  const box = $('membersList'); box.innerHTML = '';
+  C.members.forEach((m, i) => {
+    const card = el('div','card'), row = el('div','row');
+    const img = el('img','thumb'); img.src = m.img || ''; img.alt = '';
+    const name = input(m.name, 'Name', v => {
+      const old = m.name; m.name = v;
+      C.categories.forEach(c => { if (Array.isArray(c.nominees)) c.nominees = c.nominees.map(n => n === old ? v : n); });
+    });
+    name.classList.add('grow');
+    const pic = el('label','btn ghost small','Change picture'); const f = el('input'); f.type = 'file'; f.accept = 'image/*'; f.hidden = true; pic.appendChild(f);
+    f.onchange = async () => {
+      if (!f.files[0]) return; pic.firstChild.textContent = 'Uploading…';
+      try { const d = await uploadFile(f.files[0]); m.img = d.url; render(); dirty(); toast('Picture uploaded — click Save to publish'); }
+      catch (e) { toast(e.message); pic.firstChild.textContent = 'Change picture'; }
+    };
+    row.append(img, name, pic, mini(C.members, i)); card.appendChild(row); box.appendChild(card);
+  });
+}
+$('addMember').onclick = () => { C.members.push({ name: 'New member', img: '' }); render(); dirty(); };
+
+/* ---------------- awards ---------------- */
+function renderAwards(){
+  $('roundName').textContent = C.round; $('votingOpen').checked = C.votingOpen !== false;
+  const box = $('catsList'); box.innerHTML = '';
+  C.categories.forEach((c, i) => {
+    const card = el('div','card'), row = el('div','row');
+    const t = input(c.title, 'Category name', v => c.title = v); t.classList.add('grow'); t.style.fontWeight = '600';
+    row.append(t, mini(C.categories, i)); card.appendChild(row);
+    const d = input(c.desc, 'Short description (optional)', v => c.desc = v); d.style.marginTop = '8px'; card.appendChild(d);
+    const noms = el('div','noms');
+    const allL = el('label','chk'); const all = el('input'); all.type = 'checkbox'; all.checked = c.nominees === 'all' || !Array.isArray(c.nominees);
+    allL.append(all, document.createTextNode('All members'));
+    all.onchange = () => { c.nominees = all.checked ? 'all' : C.members.map(m => m.name); render(); dirty(); };
+    noms.appendChild(allL);
+    if (!all.checked) C.members.forEach(m => {
+      const l = el('label','chk'); const x = el('input'); x.type = 'checkbox'; x.checked = c.nominees.includes(m.name);
+      x.onchange = () => { c.nominees = C.members.map(mm => mm.name).filter(n => n === m.name ? x.checked : c.nominees.includes(n)); dirty(); };
+      l.append(x, document.createTextNode(m.name)); noms.appendChild(l);
+    });
+    card.appendChild(noms); box.appendChild(card);
+  });
+}
+$('votingOpen').onchange = () => { C.votingOpen = $('votingOpen').checked; dirty(); };
+$('addCat').onclick = () => { C.categories.push({ title: 'New award', desc: '', nominees: 'all' }); render(); dirty(); };
+$('newRound').onclick = async () => {
+  if (JSON.stringify(C) !== saved) { toast('Save or discard your changes first'); return; }
+  const name = prompt('Name for the new voting round (e.g. 2027):', String(new Date().getFullYear() + 1));
+  if (name === null) return;
+  try { const d = await call('newRound', { round: name.trim() }); C = d.content; saved = JSON.stringify(C); render(); dirty(); toast('New round started — everyone can vote again'); }
+  catch (e) { toast(e.message); }
+};
+
+/* ---------------- media ---------------- */
+function ytId(u){ const m = String(u).match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([\w-]{11})/); return m ? m[1] : null; }
+function renderMedia(){
+  const box = $('mediaList'); box.innerHTML = '';
+  if (!C.media.length) box.appendChild(el('p', null, 'Nothing here yet.')).style.color = 'var(--ink2)';
+  C.media.forEach((m, i) => {
+    const card = el('div','card'), row = el('div','row'), prev = el('div','media-prev');
+    if (m.type === 'youtube' && ytId(m.url)) { const im = el('img'); im.src = `https://i.ytimg.com/vi/${ytId(m.url)}/hqdefault.jpg`; prev.appendChild(im); }
+    else if (m.type === 'video') { const f = el('iframe'); f.src = m.url; prev.appendChild(f); }
+    else { const im = el('img'); im.src = m.url; prev.appendChild(im); }
+    const cap = input(m.caption, 'Caption (optional)', v => m.caption = v); cap.classList.add('grow');
+    const kind = el('span','pill-note', m.type === 'youtube' ? 'YouTube' : m.type === 'video' ? 'Video' : 'Picture/GIF');
+    row.append(prev, cap, kind, mini(C.media, i)); card.appendChild(row); box.appendChild(card);
+  });
+}
+$('mediaFile').onchange = async () => {
+  const f = $('mediaFile').files[0]; if (!f) return;
+  try {
+    const d = await uploadFile(f, t => $('mediaProgress').textContent = t);
+    C.media.unshift({ type: d.type, url: d.url, caption: '' }); render(); dirty();
+    $('mediaProgress').textContent = 'Uploaded. Add a caption if you want, then click Save & publish.';
+  } catch (e) { $('mediaProgress').textContent = e.message; }
+  $('mediaFile').value = '';
+};
+$('addLink').onclick = () => {
+  const u = $('mediaLink').value.trim();
+  if (!/^https:\/\//.test(u)) { toast('Paste a full link starting with https://'); return; }
+  C.media.unshift({ type: ytId(u) ? 'youtube' : 'image', url: u, caption: '' });
+  $('mediaLink').value = ''; render(); dirty();
+};
+
+/* ---------------- results ---------------- */
+async function loadResults(){
+  const box = $('resList'); box.textContent = 'Loading…';
+  try {
+    const { results: r } = await call('results');
+    $('resSub').textContent = `Round ${r.round} · ${r.voters} ${r.voters === 1 ? 'person has' : 'people have'} voted`;
+    box.innerHTML = '';
+    Object.keys(r.counts).forEach(cat => {
+      const sec = el('div','card res-cat'); sec.appendChild(el('h3', null, cat));
+      const counts = r.counts[cat], names = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+      const max = Math.max(1, ...names.map(n => counts[n]));
+      if (!names.length) sec.appendChild(el('div', null, 'No votes yet')).style.color = 'var(--ink2)';
+      names.forEach((n, i) => {
+        const row = el('div','res-row'); row.appendChild(el('span', null, (i === 0 ? '🏆 ' : '') + n));
+        const bar = el('div','res-bar'), fill = el('div'); fill.style.width = (counts[n] / max * 100) + '%'; bar.appendChild(fill);
+        row.append(bar, el('b', null, counts[n])); sec.appendChild(row);
+      });
+      box.appendChild(sec);
+    });
+  } catch (e) { box.textContent = e.message; }
+}
+$('refreshRes').onclick = loadResults;
+
+/* ---------------- editors ---------------- */
+async function loadEditors(){
+  const box = $('editorsList'); box.textContent = 'Loading…';
+  try { drawEditors((await call('editors')).editors); } catch (e) { box.textContent = e.message; }
+}
+function drawEditors(list){
+  const box = $('editorsList'); box.innerHTML = '';
+  list.forEach(ed => {
+    const card = el('div','card'), row = el('div','row');
+    row.appendChild(el('b','grow', ed.name)); row.appendChild(el('span','pill-note', ed.role));
+    if (ed.name !== me.name) {
+      const del = el('button','btn danger small','Remove');
+      del.onclick = async () => { if (!confirm(`Remove ${ed.name}? They won't be able to log in.`)) return; try { drawEditors((await call('removeEditor', { user: ed.name })).editors); toast('Removed'); } catch (e) { toast(e.message); } };
+      row.appendChild(del);
+    }
+    card.appendChild(row); box.appendChild(card);
+  });
+}
+$('addEditor').onclick = async () => {
+  try { drawEditors((await call('addEditor', { user: $('newUser').value, pass: $('newPass').value, role: $('newRole').value })).editors);
+    toast(`Added ${$('newUser').value.trim().toLowerCase()}`); $('newUser').value = ''; $('newPass').value = ''; }
+  catch (e) { toast(e.message); }
+};
+
+/* ---------------- account ---------------- */
+$('changePass').onclick = async () => {
+  try { await call('changePassword', { oldPass: $('oldPass').value, newPass: $('newPass2').value }); $('oldPass').value = ''; $('newPass2').value = ''; toast('Password changed'); }
+  catch (e) { toast(e.message); }
+};
+
+function render(){ renderMembers(); renderAwards(); renderMedia(); }
+
+/* ---------------- start ---------------- */
+if (token) { try { me = JSON.parse(ss.get('mb_me') || 'null'); } catch(e) {} enter().catch(() => logoutLocal()); }
+</script>
+</body>
+</html>
