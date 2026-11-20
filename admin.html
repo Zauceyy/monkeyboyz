@@ -205,7 +205,7 @@
 const API = 'https://script.google.com/macros/s/AKfycbxME9lP3-7DGlmyNJtS9ZtMdeTpB_7xPiacksZa9VzDCdeYJZGhFo_6EUK3q1x-SlTf/exec';
 const $ = id => document.getElementById(id);
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
-const ss = { get(k){ try { return sessionStorage.getItem(k); } catch(e) { return null; } }, set(k,v){ try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k,v); } catch(e) {} } };
+const ss = { get(k){ try { return localStorage.getItem(k); } catch(e) { return null; } }, set(k,v){ try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k,v); } catch(e) {} } };
 
 let token = ss.get('mb_token'), me = null, C = null, saved = null, setupMode = false;
 
@@ -250,7 +250,7 @@ async function enter(){
   $('loginView').classList.add('hide'); $('appView').classList.remove('hide');
   $('meName').textContent = me.name; $('meRole').textContent = me.role;
   $('editorsTab').classList.toggle('hide', me.role !== 'owner');
-  render(); show('members');
+  render(); show(['members','awards','media','results','editors','account'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'members');
 }
 
 /* ---------------- tabs & save bar ---------------- */
@@ -306,6 +306,16 @@ async function uploadFile(file, status){
   return call('upload', { name: file.name, mime: file.type, data });
 }
 
+function picButton(label, onDone){
+  const pic = el('label','btn ghost small', label); const f = el('input'); f.type = 'file'; f.accept = 'image/*'; f.hidden = true; pic.appendChild(f);
+  f.onchange = async () => {
+    if (!f.files[0]) return; pic.firstChild.textContent = 'Uploading…';
+    try { const d = await uploadFile(f.files[0]); onDone(d.url); render(); dirty(); toast('Uploaded — click Save & publish'); }
+    catch (e) { toast(e.message); pic.firstChild.textContent = label; }
+  };
+  return pic;
+}
+
 /* ---------------- members ---------------- */
 function renderMembers(){
   const box = $('membersList'); box.innerHTML = '';
@@ -340,14 +350,38 @@ function renderAwards(){
     const noms = el('div','noms');
     const allL = el('label','chk'); const all = el('input'); all.type = 'checkbox'; all.checked = c.nominees === 'all' || !Array.isArray(c.nominees);
     allL.append(all, document.createTextNode('All members'));
-    all.onchange = () => { c.nominees = all.checked ? 'all' : C.members.map(m => m.name); render(); dirty(); };
+    noms.appendChild(el('div', null, 'Members')).style.cssText = 'font-weight:600;font-size:14px;margin:4px 0 2px';
+    all.onchange = () => { c.nominees = all.checked ? 'all' : []; render(); dirty(); };
     noms.appendChild(allL);
     if (!all.checked) C.members.forEach(m => {
       const l = el('label','chk'); const x = el('input'); x.type = 'checkbox'; x.checked = c.nominees.includes(m.name);
       x.onchange = () => { c.nominees = C.members.map(mm => mm.name).filter(n => n === m.name ? x.checked : c.nominees.includes(n)); dirty(); };
       l.append(x, document.createTextNode(m.name)); noms.appendChild(l);
     });
-    card.appendChild(noms); box.appendChild(card);
+    card.appendChild(noms);
+
+    // Other nominees (not members), each with a picture/GIF
+    const ex = el('div'); ex.style.marginTop = '14px';
+    ex.appendChild(el('div', null, 'Other nominees')).style.cssText = 'font-weight:600;font-size:14px;margin-bottom:6px';
+    c.extras = c.extras || [];
+    c.extras.forEach((x, xi) => {
+      const r = el('div','row'); r.style.marginTop = '8px';
+      const th = el('img','thumb'); th.style.cssText = 'width:52px;height:52px'; th.src = x.img || ''; th.alt = '';
+      const nm = input(x.name, 'Name', v => x.name = v); nm.classList.add('grow');
+      r.append(th, nm, picButton(x.img ? 'Change picture/GIF' : 'Add picture/GIF', u => x.img = u), mini(c.extras, xi));
+      ex.appendChild(r);
+    });
+    const addX = el('button','btn ghost small','+ Add other nominee'); addX.style.marginTop = '8px';
+    addX.onclick = () => { c.extras.push({ name: '', img: '' }); render(); dirty(); };
+    ex.appendChild(addX); card.appendChild(ex);
+
+    // Optional banner picture/GIF for the category
+    const bn = el('div','row'); bn.style.marginTop = '14px';
+    if (c.img) { const th = el('img','thumb'); th.src = c.img; th.alt = ''; th.style.cssText = 'width:96px;height:54px'; bn.appendChild(th); }
+    bn.appendChild(picButton(c.img ? 'Change banner picture/GIF' : 'Add banner picture/GIF (optional)', u => c.img = u));
+    if (c.img) { const rm = el('button','btn danger small','Remove banner'); rm.onclick = () => { c.img = ''; render(); dirty(); }; bn.appendChild(rm); }
+    card.appendChild(bn);
+    box.appendChild(card);
   });
 }
 $('votingOpen').onchange = () => { C.votingOpen = $('votingOpen').checked; dirty(); };
