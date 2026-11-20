@@ -415,10 +415,18 @@ $('newRound').onclick = async () => {
 
 /* ---------------- media ---------------- */
 function ytId(u){ const m = String(u).match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([\w-]{11})/); return m ? m[1] : null; }
+function adminVideo(url){
+  const m = String(url).match(/\/file\/d\/([\w-]{10,})/), v = el('video');
+  v.muted = true; v.preload = 'metadata'; v.controls = true; v.playsInline = true;
+  if (m) { v.poster = 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w400'; v.src = 'https://drive.google.com/uc?export=download&id=' + m[1]; }
+  else v.src = url;
+  v.style.cssText = 'width:100%;height:100%;object-fit:cover;background:#000';
+  return v;
+}
 function preview(m){
   const prev = el('div','media-prev');
   if (m.type === 'youtube' && ytId(m.url)) { const im = el('img'); im.src = `https://i.ytimg.com/vi/${ytId(m.url)}/hqdefault.jpg`; prev.appendChild(im); }
-  else if (m.type === 'video') { const f = el('iframe'); f.src = m.url; prev.appendChild(f); }
+  else if (m.type === 'video') { prev.appendChild(adminVideo(m.url)); }
   else { const im = el('img'); im.src = m.url; prev.appendChild(im); }
   return prev;
 }
@@ -429,7 +437,7 @@ function renderMedia(){
   C.media.forEach((m, i) => {
     const card = el('div','card'), row = el('div','row'), prev = el('div','media-prev');
     if (m.type === 'youtube' && ytId(m.url)) { const im = el('img'); im.src = `https://i.ytimg.com/vi/${ytId(m.url)}/hqdefault.jpg`; prev.appendChild(im); }
-    else if (m.type === 'video') { const f = el('iframe'); f.src = m.url; prev.appendChild(f); }
+    else if (m.type === 'video') { prev.appendChild(adminVideo(m.url)); }
     else { const im = el('img'); im.src = m.url; prev.appendChild(im); }
     const cap = input(m.caption, 'Caption (optional)', v => m.caption = v); cap.classList.add('grow');
     const kind = el('span','pill-note', (m.type === 'youtube' ? 'YouTube' : m.type === 'video' ? 'Video' : 'Picture/GIF') + (m.by ? ' · by ' + m.by : ''));

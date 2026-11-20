@@ -144,6 +144,7 @@
   .media-item .frame{aspect-ratio:16/10;background:#000;display:flex;align-items:center;justify-content:center}
   .media-item img{width:100%;height:100%;object-fit:cover}
   .media-item iframe{width:100%;height:100%;border:0}
+  .media-item video{width:100%;height:100%;object-fit:contain;background:#000;display:block}
   .media-item p{margin:0;padding:12px 16px;font-size:15px;color:var(--ink2)}
   .cat-img{border-radius:18px;overflow:hidden;margin:0 0 18px;max-height:340px;background:#1d1d1f}
   .cat-img img{width:100%;max-height:340px;object-fit:cover;display:block}
@@ -159,6 +160,20 @@
   button.pill{border:0;cursor:pointer;font:inherit;font-size:17px}
   button.pill:disabled{opacity:.5;cursor:default}
   .media-item .by{display:block;font-size:13px;color:var(--ink2);padding:0 16px 12px;margin-top:-6px}
+  .media-item{position:relative}
+  .media-item .frame img{cursor:zoom-in}
+  .expand{position:absolute;top:10px;right:10px;z-index:2;width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+  .expand:hover{background:rgba(0,0,0,.75)}
+  .lightbox{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.96);backdrop-filter:blur(10px);display:none;flex-direction:column;align-items:center;justify-content:center;padding:56px 16px 24px}
+  .lightbox.show{display:flex;animation:in .2s ease}
+  .lightbox .stage{width:100%;height:100%;display:flex;align-items:center;justify-content:center;min-height:0}
+  .lightbox img,.lightbox video{width:100%;height:100%;object-fit:contain}
+  .lightbox img{cursor:zoom-out}
+  .lightbox iframe{width:min(1200px,100%);aspect-ratio:16/9;max-height:100%;border:0;border-radius:10px}
+  .lightbox .cap{color:#f5f5f7;font-size:16px;margin-top:14px;text-align:center;max-width:800px}
+  .lightbox .cap span{color:#a1a1a6;font-size:14px;display:block;margin-top:2px}
+  .lightbox .close{position:absolute;top:14px;right:16px;width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:20px;cursor:pointer}
+  .lightbox .close:hover{background:rgba(255,255,255,.26)}
   /* ---------- write-ins ---------- */
   .writein{margin-top:12px;display:flex;gap:10px;align-items:center}
   .writein input{flex:1;font:inherit;font-size:16px;padding:12px 14px;border-radius:14px;border:1px solid #333336;background:#1d1d1f;color:#f5f5f7}
@@ -211,6 +226,40 @@
   .lb-save{border:0;border-radius:980px;background:var(--link);color:#fff;font:inherit;font-size:15px;padding:9px 16px;cursor:pointer}
   .lb-save:disabled{opacity:.5}
   .lb-msg{color:var(--ink2);font-size:13px;margin-top:6px;min-height:16px}
+  .game-tabs{flex-wrap:wrap;justify-content:center}
+  .bb{display:flex;gap:16px;align-items:flex-start;justify-content:center}
+  .bb-side{display:flex;flex-direction:column;gap:10px;width:130px}
+  .bb-box{background:var(--tile);border-radius:14px;padding:10px 12px;text-align:left;display:flex;flex-direction:column;gap:4px}
+  .bb-box span{font-size:12px;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em}
+  .bb-box b{font-size:22px;letter-spacing:-.02em}
+  .bb-box canvas{width:100%;height:auto}
+  .bb-well{position:relative;border-radius:16px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.25);line-height:0}
+  .bb-board{width:min(300px,58vw);aspect-ratio:1/2;display:block;touch-action:none}
+  .bb-ov{position:absolute;inset:0;background:rgba(10,10,12,.72);display:flex;align-items:center;justify-content:center;line-height:1.4;backdrop-filter:blur(3px)}
+  .bb-ov-in{text-align:center;color:#fff;padding:20px}
+  .bb-ov-in h3{font-size:28px;margin:0 0 6px}
+  .bb-ov-in p{color:#d2d2d7;font-size:14px;margin:0 0 16px}
+  .bb-ov-b{border:0;border-radius:980px;background:#ffd43b;color:#111;font:inherit;font-weight:700;font-size:17px;padding:11px 26px;cursor:pointer}
+  .bb-toggle{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;font:inherit;font-size:13px;padding:9px 10px;cursor:pointer;text-align:left}
+  .bb-keys{color:var(--ink2);font-size:12px;line-height:1.6;text-align:left;margin-top:4px}
+  .bb-pad{display:none;grid-template-columns:repeat(3,1fr);gap:8px;width:min(360px,94vw);margin-top:14px}
+  .bb-pad button{border:0;border-radius:14px;background:var(--tile);color:var(--ink);font-size:22px;padding:14px 0;cursor:pointer;touch-action:none;-webkit-user-select:none;user-select:none}
+  .bb-pad button:active{background:var(--line)}
+  @media (max-width:760px), (pointer:coarse){
+    .bb-pad{display:grid}
+    .bb-keys{display:none}
+  }
+  @media (max-width:760px){
+    .bb{flex-direction:column;align-items:center;gap:8px}
+    .bb-side{width:min(360px,94vw);flex-direction:row;gap:6px}
+    .bb-side > *{flex:1;min-width:0}
+    .bb-box{padding:6px 8px;gap:2px} .bb-box span{font-size:10px} .bb-box b{font-size:16px}
+    .bb-box canvas{height:34px;object-fit:contain}
+    .bb-toggle{font-size:11px;padding:6px;text-align:center}
+    .bb-well{order:3}
+    .bb-board{width:min(250px,62vw)}
+    .bb-pad{order:4}
+  }
   @media (max-width:760px){ .clk{grid-template-columns:1fr} }
   /* ---------- dark mode ---------- */
   .theme-btn{background:none;border:0;cursor:pointer;font-size:16px;line-height:1;padding:6px;margin-left:18px;border-radius:50%;color:inherit}
@@ -232,6 +281,8 @@
   .pill.dcb:hover{background:#4752c4}
   .dc .code{color:var(--ink2);font-size:14px;margin-top:14px}
 
+  @media (max-width:460px){ .brand-t{display:none} }
+  .brand{white-space:nowrap}
   @media (max-width:760px){
     .tabs{gap:13px}
     .tab{font-size:12px}
@@ -257,7 +308,7 @@
 
 <header>
   <nav class="nav">
-    <a class="brand" href="#home">🐒 MonkeyBoyz</a>
+    <a class="brand" href="#home" aria-label="MonkeyBoyz home">🐒 <span class="brand-t">MonkeyBoyz</span></a>
     <div class="tabs">
       <a class="tab" href="#home" data-tab="home">Home</a>
       <a class="tab" href="#vote" data-tab="vote">Vote</a>
@@ -395,6 +446,7 @@
       <div class="game-tabs">
         <button class="game-pick on" data-game="flappy">🐒 Flappy Monkey</button>
         <button class="game-pick" data-game="clicker">🎧 Gerson Bobble</button>
+        <button class="game-pick" data-game="blocks">🍌 Banana Blocks</button>
       </div>
       <div id="gameFlappy" class="game-box flappy-wrap">
         <div class="flappy-col"><canvas id="flappyCanvas"></canvas>
@@ -402,6 +454,7 @@
         <div class="lb" id="flappyBoard"></div>
       </div>
       <div id="gameClicker" class="game-box" style="display:none"><div id="clickerRoot"></div></div>
+      <div id="gameBlocks" class="game-box" style="display:none"><div id="blocksRoot"></div></div>
     </div>
   </section>
 </main>
@@ -434,6 +487,12 @@
   </div>
 </footer>
 
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Clip viewer">
+  <button class="close" id="lbClose" aria-label="Close">✕</button>
+  <div class="stage" id="lbStage"></div>
+  <div class="cap" id="lbCap"></div>
+</div>
+
 <div class="modal" id="modal">
   <div class="box">
     <div style="font-size:54px">🏆</div>
@@ -444,7 +503,8 @@
   </div>
 </div>
 
-<script src="games/games.js"></script>
+<script src="games/blocks.js?v=9"></script>
+<script src="games/games.js?v=9"></script>
 <script>
 /* =====================================================================
    Content comes from the MonkeyBoyz backend (edit it at /admin).
@@ -519,6 +579,46 @@ function renderMembers(){
 
 /* ---------- clips & gifs ---------- */
 function ytId(u){ const m = String(u).match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([\w-]{11})/); return m ? m[1] : null; }
+// Plays Drive-hosted uploads in the site's own player; falls back to Drive's player if streaming fails.
+function driveId(u){ const m = String(u).match(/\/file\/d\/([\w-]{10,})/) || String(u).match(/[?&]id=([\w-]{10,})/); return m ? m[1] : null; }
+function videoPlayer(url){
+  const id = driveId(url), v = el('video');
+  v.controls = true; v.playsInline = true; v.preload = 'metadata';
+  if (!id) { v.src = url; return v; }
+  v.poster = 'https://drive.google.com/thumbnail?id=' + id + '&sz=w1000';
+  v.src = 'https://drive.google.com/uc?export=download&id=' + id;
+  v.addEventListener('error', () => {
+    const f = el('iframe'); f.src = 'https://drive.google.com/file/d/' + id + '/preview'; f.allow = 'autoplay; fullscreen'; f.allowFullscreen = true;
+    v.replaceWith(f);
+  }, { once: true });
+  return v;
+}
+/* ---------- big viewer for clips & GIFs ---------- */
+function openViewer(m){
+  const stage = document.getElementById('lbStage'), cap = document.getElementById('lbCap');
+  stage.innerHTML = ''; cap.innerHTML = '';
+  document.querySelectorAll('#mediaGrid video').forEach(v => { try { v.pause(); } catch (e) {} });
+  if (m.type === 'youtube' && ytId(m.url)) {
+    const f = el('iframe'); f.src = 'https://www.youtube.com/embed/' + ytId(m.url) + '?autoplay=1'; f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen'; f.allowFullscreen = true; stage.appendChild(f);
+  } else if (m.type === 'video') {
+    const v = videoPlayer(m.url); v.autoplay = true; v.preload = 'auto'; stage.appendChild(v);
+  } else {
+    const im = new Image(); im.src = m.url; im.alt = m.caption || ''; stage.appendChild(im);
+  }
+  if (m.caption) cap.appendChild(document.createTextNode(m.caption));
+  if (m.by) cap.appendChild(el('span', null, 'by ' + m.by));
+  document.getElementById('lightbox').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeViewer(){
+  const lb = document.getElementById('lightbox'); if (!lb.classList.contains('show')) return;
+  lb.classList.remove('show'); document.getElementById('lbStage').innerHTML = ''; document.body.style.overflow = '';
+}
+document.getElementById('lbClose').onclick = closeViewer;
+document.getElementById('lightbox').addEventListener('click', e => { if (e.target.id === 'lightbox' || e.target.id === 'lbStage' || e.target.tagName === 'IMG') closeViewer(); });
+addEventListener('keydown', e => { if (e.key === 'Escape') closeViewer(); });
+addEventListener('hashchange', closeViewer);
+
 function renderMedia(){
   const grid = document.getElementById('mediaGrid');
   grid.innerHTML = '';
@@ -527,10 +627,13 @@ function renderMedia(){
     if (m.type === 'youtube' && ytId(m.url)) {
       const f = el('iframe'); f.src = 'https://www.youtube.com/embed/' + ytId(m.url); f.allow = 'encrypted-media; picture-in-picture; fullscreen'; f.allowFullscreen = true; f.loading = 'lazy'; fr.appendChild(f);
     } else if (m.type === 'video' && /^https:\/\/drive\.google\.com\//.test(m.url)) {
-      const f = el('iframe'); f.src = m.url; f.allow = 'autoplay; fullscreen'; f.allowFullscreen = true; f.loading = 'lazy'; fr.appendChild(f);
+      fr.appendChild(videoPlayer(m.url));
     } else if (safeUrl(m.url)) {
       const im = new Image(); im.loading = 'lazy'; im.alt = m.caption || ''; im.src = m.url; fr.appendChild(im);
     } else return;
+    const ex = el('button', 'expand', '⤢'); ex.title = 'View big'; ex.setAttribute('aria-label', 'View big'); ex.onclick = () => openViewer(m);
+    item.appendChild(ex);
+    const img = fr.querySelector('img'); if (img) img.onclick = () => openViewer(m);
     item.appendChild(fr); if (m.caption) item.appendChild(el('p', null, m.caption)); if (m.by) item.appendChild(el('span', 'by', 'by ' + m.by)); grid.appendChild(item);
   });
   document.getElementById('mediaEmpty').style.display = grid.children.length ? 'none' : '';
