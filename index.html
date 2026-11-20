@@ -56,7 +56,15 @@
   /* ---------- home ---------- */
   .hero{padding:90px 22px 0;text-align:center}
   .hero .shot{max-width:1000px;margin:56px auto 0;border-radius:28px;overflow:hidden}
-  .hero .shot img{width:100%;aspect-ratio:620/372;object-fit:cover}
+  .hero .shot img{width:100%;height:auto;display:block;transition:opacity .25s}
+  .banner-pick{max-width:1000px;margin:18px auto 0;display:flex;gap:10px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:thin;justify-content:center;flex-wrap:wrap}
+  .bp{border:0;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--ink2);font:inherit;font-size:12px;flex:none}
+  .bp img{width:92px;height:56px;object-fit:cover;border-radius:10px;box-shadow:0 0 0 2px transparent;transition:box-shadow .15s, transform .15s}
+  .bp:hover img{transform:translateY(-2px)}
+  .bp.on{color:var(--ink);font-weight:600}
+  .bp.on img{box-shadow:0 0 0 3px var(--link)}
+  .bp-label{text-align:center;color:var(--ink2);font-size:13px;margin-top:12px}
+  @media (max-width:760px){ .banner-pick{flex-wrap:nowrap;justify-content:flex-start} .bp img{width:78px;height:48px} }
   .sec{padding:110px 22px}
   .sec.gray{background:var(--tile)}
   .wrap{max-width:1000px;margin:0 auto}
@@ -330,7 +338,9 @@
       <a class="pill" href="https://www.youtube.com/@YTMonkeyBoyz" target="_blank" rel="noopener">Watch now</a>
       <a class="lnk" href="https://www.youtube.com/@YTMonkeyBoyz?sub_confirmation=1" target="_blank" rel="noopener">Subscribe</a>
     </div>
-    <div class="shot reveal"><img src="monkeyboyz.jpg" alt="The MonkeyBoyz"></div>
+    <div class="shot reveal"><img id="bannerImg" src="monkeyboyz.jpg" alt="The MonkeyBoyz"></div>
+    <div class="bp-label">Pick your banner</div>
+    <div class="banner-pick" id="bannerPick" role="radiogroup" aria-label="Banner"></div>
   </section>
 
   <section class="sec">
@@ -566,6 +576,38 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && lo
 
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const safeUrl = u => /^(https:\/\/|members\/|[a-z0-9_-]+\.(webp|png|jpe?g|gif)$)/i.test(u || '') ? u : '';
+
+/* ---------- banner picker (choice is remembered on this device) ---------- */
+const BANNERS = [
+  { id: 'classic',   name: 'Classic',      src: 'monkeyboyz.jpg' },
+  { id: 'festive',   name: 'Festive',      src: 'banners/festive.webp' },
+  { id: 'thankful',  name: 'Thankful',     src: 'banners/thankful.webp' },
+  { id: 'newyear',   name: 'New Year',     src: 'banners/newyear.webp' },
+  { id: 'usa',       name: 'USA',          src: 'banners/usa.webp' },
+  { id: 'wrestling', name: 'Wrestling',    src: 'banners/wrestling.webp' },
+  { id: 'mormon',    name: 'Mormon',       src: 'banners/mormon.webp' },
+  { id: 'pride',     name: 'Pride',        src: 'banners/pride.webp' },
+  { id: 'boring',    name: 'Boring',       src: 'banners/boring.webp' },
+];
+function setBanner(id, save){
+  const b = BANNERS.find(x => x.id === id) || BANNERS[0];
+  const img = document.getElementById('bannerImg');
+  if (img.getAttribute('src') !== b.src) { img.style.opacity = .3; img.onload = () => img.style.opacity = 1; img.src = b.src; }
+  img.alt = 'The MonkeyBoyz — ' + b.name;
+  document.querySelectorAll('.bp').forEach(x => { const on = x.dataset.id === b.id; x.classList.toggle('on', on); x.setAttribute('aria-checked', on); });
+  if (save) store.set('mb_banner', b.id);
+}
+(function(){
+  const box = document.getElementById('bannerPick');
+  BANNERS.forEach(b => {
+    const btn = el('button', 'bp'); btn.type = 'button'; btn.dataset.id = b.id; btn.setAttribute('role', 'radio');
+    const im = new Image(); im.src = b.id === 'classic' ? 'banners/classic-t.webp' : 'banners/' + b.id + '-t.webp'; im.alt = ''; im.loading = 'lazy';
+    btn.append(im, el('span', null, b.name));
+    btn.onclick = () => setBanner(b.id, true);
+    box.appendChild(btn);
+  });
+  setBanner(store.get('mb_banner') || 'classic', false);
+})();
 
 /* ---------- meet the troop ---------- */
 function renderMembers(){
