@@ -104,7 +104,7 @@
       <nav class="tabs" id="tabs">
         <button class="tab" data-t="members">Members</button>
         <button class="tab" data-t="awards">Awards</button>
-        <button class="tab" data-t="media">GIFs &amp; Videos</button>
+        <button class="tab" data-t="media">Clips &amp; GIFs <span id="pendBadge" class="pill-note hide" style="margin-left:4px"></span></button>
         <button class="tab" data-t="results">Results</button>
         <button class="tab" data-t="editors" id="editorsTab">Editors</button>
         <button class="tab" data-t="account">Account</button>
@@ -129,6 +129,10 @@
         <div><b>Voting open</b><div style="color:var(--ink2);font-size:14px">When off, the Vote page shows "Voting is closed".</div></div>
         <label class="switch"><input type="checkbox" id="votingOpen"><span></span></label>
       </div>
+      <div class="card toggle">
+        <div><b>Allow write-ins</b><div style="color:var(--ink2);font-size:14px">Lets voters type in someone who isn't listed.</div></div>
+        <label class="switch"><input type="checkbox" id="allowWriteIns"><span></span></label>
+      </div>
       <div id="catsList"></div>
       <div class="row" style="margin-top:6px">
         <button class="btn ghost" id="addCat">+ Add category</button>
@@ -139,8 +143,17 @@
 
     <!-- Media -->
     <section data-p="media" class="hide">
-      <h2>GIFs &amp; Videos</h2>
-      <p class="sub">Shown in the "Clips &amp; GIFs" section on the home page.</p>
+      <h2>Clips &amp; GIFs</h2>
+      <p class="sub">Shown on the Clips page. Visitors can upload too.</p>
+      <div class="card toggle">
+        <div><b>Approve visitor uploads first</b><div style="color:var(--ink2);font-size:14px">When on, uploads from visitors wait below until an editor approves them.</div></div>
+        <label class="switch"><input type="checkbox" id="requireApproval"><span></span></label>
+      </div>
+      <div id="pendWrap" class="hide">
+        <h3 style="margin:22px 0 10px">Waiting for approval</h3>
+        <div id="pendList"></div>
+      </div>
+      <h3 style="margin:22px 0 10px">On the site</h3>
       <div class="addbox">
         <b>Add something</b>
         <div class="row" style="margin-top:12px">
@@ -207,7 +220,7 @@ const $ = id => document.getElementById(id);
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const ss = { get(k){ try { return localStorage.getItem(k); } catch(e) { return null; } }, set(k,v){ try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k,v); } catch(e) {} } };
 
-let token = ss.get('mb_token'), me = null, C = null, saved = null, setupMode = false;
+let token = ss.get('mb_token'), me = null, C = null, saved = null, setupMode = false, loadedAt = 0;
 
 function toast(t){ const e = $('toast'); e.textContent = t; e.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => e.classList.remove('show'), 2600); }
 async function call(action, data = {}){
@@ -246,7 +259,8 @@ $('logout').onclick = async () => { try { await call('logout'); } catch(e) {} lo
 async function enter(){
   if (!me) { const d = await call('me'); me = d.user; ss.set('mb_me', JSON.stringify(me)); }
   const r = await fetch(API + '?action=content'); const d = await r.json();
-  C = JSON.parse(JSON.stringify(d.content)); saved = JSON.stringify(C);
+  C = JSON.parse(JSON.stringify(d.content)); saved = JSON.stringify(C); loadedAt = Date.now();
+  loadPending();
   $('loginView').classList.add('hide'); $('appView').classList.remove('hide');
   $('meName').textContent = me.name; $('meRole').textContent = me.role;
   $('editorsTab').classList.toggle('hide', me.role !== 'owner');
@@ -260,6 +274,7 @@ function show(t){
   if (t === 'awards') renderAwards();
   if (t === 'members') renderMembers();
   if (t === 'results') loadResults();
+  if (t === 'media') loadPending();
   if (t === 'editors') loadEditors();
 }
 $('tabs').onclick = e => { const b = e.target.closest('.tab'); if (b) show(b.dataset.t); };
@@ -267,7 +282,7 @@ function dirty(){ $('savebar').classList.toggle('hide', JSON.stringify(C) === sa
 $('discard').onclick = () => { C = JSON.parse(saved); render(); dirty(); };
 $('save').onclick = async () => {
   $('save').disabled = true; $('save').textContent = 'Saving…';
-  try { const d = await call('save', { content: C }); C = d.content; saved = JSON.stringify(C); render(); dirty(); toast('Saved — the site is updated'); }
+  try { const d = await call('save', { content: C, since: loadedAt }); C = d.content; saved = JSON.stringify(C); loadedAt = Date.now(); render(); dirty(); toast('Saved — the site is updated'); }
   catch (e) { toast(e.message); }
   finally { $('save').disabled = false; $('save').textContent = 'Save & publish'; }
 };
@@ -340,7 +355,7 @@ $('addMember').onclick = () => { C.members.push({ name: 'New member', img: '' })
 
 /* ---------------- awards ---------------- */
 function renderAwards(){
-  $('roundName').textContent = C.round; $('votingOpen').checked = C.votingOpen !== false;
+  $('roundName').textContent = C.round; $('votingOpen').checked = C.votingOpen !== false; $('allowWriteIns').checked = C.allowWriteIns !== false;
   const box = $('catsList'); box.innerHTML = '';
   C.categories.forEach((c, i) => {
     const card = el('div','card'), row = el('div','row');
@@ -363,8 +378,7 @@ function renderAwards(){
     // Other nominees (not members), each with a picture/GIF
     const ex = el('div'); ex.style.marginTop = '14px';
     ex.appendChild(el('div', null, 'Other nominees')).style.cssText = 'font-weight:600;font-size:14px;margin-bottom:6px';
-    c.extras = c.extras || [];
-    c.extras.forEach((x, xi) => {
+    (c.extras || []).forEach((x, xi) => {
       const r = el('div','row'); r.style.marginTop = '8px';
       const th = el('img','thumb'); th.style.cssText = 'width:52px;height:52px'; th.src = x.img || ''; th.alt = '';
       const nm = input(x.name, 'Name', v => x.name = v); nm.classList.add('grow');
@@ -372,7 +386,7 @@ function renderAwards(){
       ex.appendChild(r);
     });
     const addX = el('button','btn ghost small','+ Add other nominee'); addX.style.marginTop = '8px';
-    addX.onclick = () => { c.extras.push({ name: '', img: '' }); render(); dirty(); };
+    addX.onclick = () => { (c.extras = c.extras || []).push({ name: '', img: '' }); render(); dirty(); };
     ex.appendChild(addX); card.appendChild(ex);
 
     // Optional banner picture/GIF for the category
@@ -385,6 +399,8 @@ function renderAwards(){
   });
 }
 $('votingOpen').onchange = () => { C.votingOpen = $('votingOpen').checked; dirty(); };
+$('allowWriteIns').onchange = () => { C.allowWriteIns = $('allowWriteIns').checked; dirty(); };
+$('requireApproval').onchange = () => { C.requireApproval = $('requireApproval').checked; dirty(); };
 $('addCat').onclick = () => { C.categories.push({ title: 'New award', desc: '', nominees: 'all' }); render(); dirty(); };
 $('newRound').onclick = async () => {
   if (JSON.stringify(C) !== saved) { toast('Save or discard your changes first'); return; }
@@ -396,7 +412,15 @@ $('newRound').onclick = async () => {
 
 /* ---------------- media ---------------- */
 function ytId(u){ const m = String(u).match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([\w-]{11})/); return m ? m[1] : null; }
+function preview(m){
+  const prev = el('div','media-prev');
+  if (m.type === 'youtube' && ytId(m.url)) { const im = el('img'); im.src = `https://i.ytimg.com/vi/${ytId(m.url)}/hqdefault.jpg`; prev.appendChild(im); }
+  else if (m.type === 'video') { const f = el('iframe'); f.src = m.url; prev.appendChild(f); }
+  else { const im = el('img'); im.src = m.url; prev.appendChild(im); }
+  return prev;
+}
 function renderMedia(){
+  $('requireApproval').checked = C.requireApproval !== false;
   const box = $('mediaList'); box.innerHTML = '';
   if (!C.media.length) box.appendChild(el('p', null, 'Nothing here yet.')).style.color = 'var(--ink2)';
   C.media.forEach((m, i) => {
@@ -405,7 +429,7 @@ function renderMedia(){
     else if (m.type === 'video') { const f = el('iframe'); f.src = m.url; prev.appendChild(f); }
     else { const im = el('img'); im.src = m.url; prev.appendChild(im); }
     const cap = input(m.caption, 'Caption (optional)', v => m.caption = v); cap.classList.add('grow');
-    const kind = el('span','pill-note', m.type === 'youtube' ? 'YouTube' : m.type === 'video' ? 'Video' : 'Picture/GIF');
+    const kind = el('span','pill-note', (m.type === 'youtube' ? 'YouTube' : m.type === 'video' ? 'Video' : 'Picture/GIF') + (m.by ? ' · by ' + m.by : ''));
     row.append(prev, cap, kind, mini(C.media, i)); card.appendChild(row); box.appendChild(card);
   });
 }
@@ -424,6 +448,29 @@ $('addLink').onclick = () => {
   C.media.unshift({ type: ytId(u) ? 'youtube' : 'image', url: u, caption: '' });
   $('mediaLink').value = ''; render(); dirty();
 };
+
+/* ---------------- visitor uploads waiting for approval ---------------- */
+async function loadPending(){
+  try {
+    const { items } = await call('pending');
+    $('pendWrap').classList.toggle('hide', !items.length);
+    $('pendBadge').classList.toggle('hide', !items.length); $('pendBadge').textContent = items.length;
+    const box = $('pendList'); box.innerHTML = '';
+    items.forEach(it => {
+      const card = el('div','card'), row = el('div','row');
+      const info = el('div','grow'); info.appendChild(el('b', null, it.caption || '(no caption)'));
+      info.appendChild(el('div', null, (it.by ? 'from ' + it.by + ' · ' : '') + new Date(it.time).toLocaleString())).style.cssText = 'color:var(--ink2);font-size:13px';
+      const ok = el('button','btn small','Approve'), no = el('button','btn danger small','Reject');
+      ok.onclick = async () => { ok.disabled = no.disabled = true;
+        try { const d = await call('review', { row: it.row, approve: true }); C.media.unshift(d.item); saved = JSON.stringify(Object.assign(JSON.parse(saved), { media: [d.item].concat(JSON.parse(saved).media || []) })); render(); dirty(); toast('Approved — it\'s on the Clips page'); loadPending(); }
+        catch (e) { toast(e.message); ok.disabled = no.disabled = false; } };
+      no.onclick = async () => { if (!confirm('Reject and delete this upload?')) return; ok.disabled = no.disabled = true;
+        try { await call('review', { row: it.row, approve: false }); toast('Rejected'); loadPending(); }
+        catch (e) { toast(e.message); ok.disabled = no.disabled = false; } };
+      row.append(preview(it), info, ok, no); card.appendChild(row); box.appendChild(card);
+    });
+  } catch (e) { /* not fatal */ }
+}
 
 /* ---------------- results ---------------- */
 async function loadResults(){
