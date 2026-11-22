@@ -5,6 +5,9 @@
     { id: 'impossible-quiz-deluxe', title: 'The Impossible Quiz Deluxe', by: 'Splapp-me-do', year: 2007,
       swf: 'games/flash/impossible-quiz-deluxe.swf', cover: 'games/flash/impossible-quiz-deluxe.jpg', w: 550, h: 400,
       about: 'Answer 110 questions that make no sense. You get 3 lives. Good luck.' },
+    { id: 'duck-life-4', title: 'Duck Life 4', by: 'Wix Games', year: 2012,
+      swf: 'games/flash/duck-life-4.swf', cover: 'games/flash/duck-life-4.jpg', w: 750, h: 480,
+      about: 'Train your duck at running, swimming, flying and climbing, then race to win. Your progress saves in this browser.' },
   ];
   const RUFFLE = ['https://unpkg.com/@ruffle-rs/ruffle@0.8.0/ruffle.js', 'https://cdn.jsdelivr.net/npm/@ruffle-rs/ruffle@0.8.0/ruffle.js'];
 
@@ -49,6 +52,7 @@
 
   function play(g) {
     current = g;
+    try { localStorage.setItem('mb_flash_last', g.id); } catch (e) {}
     root.querySelectorAll('.fl-card').forEach(c => c.classList.toggle('on', c.dataset.id === g.id));
     stage.style.aspectRatio = g.w + ' / ' + g.h;
     stage.style.width = `min(880px, 100%, calc((100vh - 230px) * ${(g.w / g.h).toFixed(4)}))`;   // fits on screen
@@ -85,7 +89,12 @@
     bar.querySelector('.fl-restart').onclick = () => { if (current) play(current); };
   }
   // start when the Flash tab is opened; stop (and silence) when leaving it
-  function show() { shown = true; if (!player) play(current || GAMES[0]); }
+  function show() {
+    shown = true;
+    if (player) return;
+    let last = null; try { last = localStorage.getItem('mb_flash_last'); } catch (e) {}
+    play(current || GAMES.find(g => g.id === last) || GAMES[0]);
+  }
   function hide() { shown = false; unload(); msg(''); }
 
   window.MBFlash = { init, show, hide };
