@@ -409,7 +409,7 @@
   function soloOver() {
     G.state = 'over'; G.overAt = performance.now(); Audio.stopMusic();
     const s = G.me.score;
-    if (G.me.lines >= 10) window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'clearing ' + G.me.lines + ' lines in Banana Blocks' } }));
+    if (G.me.lines >= 10) window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'clearing ' + G.me.lines + ' lines in Banana Blocks', lucky: true } }));
     if (s > G.best) { G.best = s; LS.set('mb_blocks_best', s); el.best.textContent = s.toLocaleString(); }
     overlay(`<h3>Game over</h3><p>Score ${s.toLocaleString()} · Best ${G.best.toLocaleString()}</p><button class="bb-ov-b bb-go">Play again</button>`, { '.bb-go': () => countdown(null) });
   }

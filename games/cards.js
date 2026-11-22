@@ -98,6 +98,9 @@
   const PACK_EVERY = 3 * 60 * 1000, PACK_MAX = 10, PACKS_PER_DROP = 3;
   let S = LS.get('mb_cards', null);
   if (!S) S = { own: {}, firstAt: {}, packs: 3, last: Date.now(), opened: 0 };
+  if (S.lucky == null) S.lucky = 0;
+  // Lucky Packs (won from games): much better odds, and slot 5 is always Rare or better
+  const LUCKY_ODDS = { common: .30, uncommon: .30, rare: .25, epic: .10, legendary: .04, mythic: .01 };
   function save() { LS.set('mb_cards', S); }
   function accrue() {
     const now = Date.now();
@@ -164,6 +167,7 @@
   .tc.missing .in{background:transparent;align-items:center;justify-content:center;color:var(--ink2);font-weight:700;font-size:1.4em}
   .tc.back{background:#1d1d1f;display:flex;align-items:center;justify-content:center;cursor:pointer}
   .tc.back .in{background:repeating-linear-gradient(45deg,#ffd43b 0 10px,#f5c518 10px 20px);align-items:center;justify-content:center;font-size:2.6em}
+  .tc.back.lucky .in{background:repeating-linear-gradient(45deg,#69db7c 0 10px,#40c057 10px 20px)}
   .tc .cnt{position:absolute;top:-.5em;left:-.5em;background:#111;color:#fff;border-radius:1em;font-size:.75em;font-weight:800;padding:.15em .5em;z-index:2}
   .tc .new{position:absolute;top:-.6em;right:-.4em;background:#ff3b30;color:#fff;border-radius:1em;font-size:.7em;font-weight:800;padding:.15em .55em;z-index:2}
   @keyframes tcHolo{0%{background-position:0% 50%}100%{background-position:250% 50%}}
@@ -174,6 +178,27 @@
   @keyframes tcBob{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}
 
   .cards-ui{max-width:1180px;margin:0 auto;text-align:left}
+  .cards-views{display:flex;gap:8px;justify-content:center;margin:18px 0 4px}
+  .cards-views button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:980px;font:inherit;font-size:15px;padding:8px 18px;cursor:pointer}
+  .cards-views button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .battle{text-align:center;padding:10px 0 30px}
+  .bt-score{font-size:20px;font-weight:700;margin:8px 0 14px}
+  .bt-table{display:flex;gap:22px;justify-content:center;align-items:center;flex-wrap:wrap;perspective:1000px}
+  .bt-side h5{margin:0 0 8px;font-size:13px;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em}
+  .bt-slot{min-height:266px;display:flex;align-items:center;justify-content:center}
+  .bt-slot .empty{width:190px;aspect-ratio:5/7;border-radius:14px;border:2px dashed var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink2);font-size:14px;padding:10px;box-sizing:border-box}
+  .bt-vs{font-size:28px;font-weight:900;color:var(--ink2)}
+  @media (max-width:600px){ .bt-table{flex-wrap:nowrap;gap:8px} .bt-vs{font-size:18px} .bt-slot{min-height:0} .bt-slot .empty{width:140px;font-size:12px} }
+  .bt-pick{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:16px 0 6px;min-height:44px}
+  .bt-pick button{border:0;border-radius:14px;background:var(--ink);color:var(--bg);font:inherit;font-size:16px;font-weight:700;padding:11px 18px;cursor:pointer}
+  .bt-msg{min-height:24px;font-size:16px;margin:8px 0}
+  .bt-msg .w{color:#2ea043;font-weight:700} .bt-msg .l{color:#e5484d;font-weight:700}
+  .bt-hand{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+  .bt-hand .tc{cursor:pointer} .bt-hand .tc.used{opacity:.25;cursor:default;filter:grayscale(1)}
+  .bt-hand .tc.sel{transform:translateY(-8px);box-shadow:0 0 0 3px var(--link),0 10px 24px rgba(0,0,0,.25)}
+  .bt-dots{display:flex;gap:6px;justify-content:center;margin-top:4px}
+  .bt-dots i{width:12px;height:12px;border-radius:50%;background:var(--line)} .bt-dots i.w{background:#2ea043} .bt-dots i.l{background:#e5484d} .bt-dots i.t{background:#adb5bd}
+  .tc .loan{position:absolute;top:-.6em;left:50%;transform:translateX(-50%);background:#495057;color:#fff;border-radius:1em;font-size:.6em;font-weight:800;padding:.15em .6em;z-index:2;white-space:nowrap}
   .cards-main{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:20px;align-items:start}
   .feed{position:sticky;top:70px;background:var(--tile);border-radius:20px;padding:16px;max-height:calc(100vh - 100px);display:flex;flex-direction:column;gap:10px}
   .feed h4{margin:0;font-size:16px;display:flex;align-items:center;gap:8px}
@@ -294,29 +319,32 @@
   const FLIP_SOUND = [[440], [523, 659], [523, 659, 784], [523, 659, 784, 1047], [523, 659, 784, 1047, 1319], [392, 523, 659, 784, 1047, 1319, 1568]];
 
   /* ------------------------------ packs ------------------------------ */
-  function rollCard() {
+  function rollCard(lucky) {
     if (Math.random() < TOKEN_ODDS) return TOKEN;
     const ms = members(); const m = ms[Math.floor(Math.random() * ms.length)];
     let x = Math.random(), rar = RAR[0];
-    for (const r of RAR.slice().reverse()) { if (x < r.odds) { rar = r; break; } x -= r.odds; }
+    for (const r of RAR.slice().reverse()) { const o = lucky ? LUCKY_ODDS[r.id] : r.odds; if (x < o) { rar = r; break; } x -= o; }
     const v = rar.from + Math.floor(Math.random() * (rar.to - rar.from + 1));
     return makeCard(m, v);
   }
-  function openPack() {
-    accrue(); if (S.packs < 1) return;
-    S.packs--; S.opened++;
-    if (S.packs < PACK_MAX && S.last > Date.now()) S.last = Date.now();
-    const cards = Array.from({ length: 5 }, rollCard);
-    // at least one uncommon or better in every pack
+  function openPack(lucky) {
+    lucky = lucky === true;
+    accrue();
+    if (lucky) { if (S.lucky < 1) return; S.lucky--; }
+    else { if (S.packs < 1) return; S.packs--; if (S.packs < PACK_MAX && S.last > Date.now()) S.last = Date.now(); }
+    S.opened++;
+    const cards = Array.from({ length: 5 }, () => rollCard(lucky));
+    // at least one uncommon or better in every pack; Lucky Packs: at least one Rare or better
+    if (lucky && cards.every(c => c.lvl < 2)) { const m = members()[Math.floor(Math.random() * members().length)]; cards[4] = makeCard(m, 76 + Math.floor(Math.random() * 13)); }
     if (cards.every(c => c.lvl === 0)) { const m = cards[4].member; cards[4] = makeCard(m, 51 + Math.floor(Math.random() * 25)); }
     cards.sort((a, b) => a.lvl - b.lvl);
     const fresh = cards.map(c => !S.own[c.id]);
     cards.forEach(c => addCard(c.id)); save(); render();
-    const M = modal(); M.row.innerHTML = ''; M.hint.textContent = 'Tap each card to flip it';
+    const M = modal(); M.row.innerHTML = ''; M.hint.textContent = lucky ? '🍀 Lucky Pack! Tap each card to flip it' : 'Tap each card to flip it';
     let left = cards.length;
     cards.forEach((c, i) => {
       const slot = document.createElement('div'); slot.className = 'flip';
-      const back = document.createElement('div'); back.className = 'tc back'; back.innerHTML = '<div class="in">🐒</div>';
+      const back = document.createElement('div'); back.className = 'tc back' + (lucky ? ' lucky' : ''); back.innerHTML = '<div class="in">' + (lucky ? '🍀' : '🐒') + '</div>';
       if (window.innerWidth < 600) back.style.setProperty('--w', '120px');
       slot.appendChild(back);
       slot.onclick = () => {
@@ -424,6 +452,8 @@
     const haveReal = have.filter(id => ms.some(m => id.startsWith(keyOf(m.name) + ':'))).length;
     root.querySelector('.packs-n').textContent = S.packs;
     root.querySelector('.open-btn').disabled = S.packs < 1;
+    root.querySelector('.lucky-n').textContent = S.lucky || 0;
+    root.querySelector('.lucky-btn').disabled = !(S.lucky > 0);
     root.querySelector('.prog-t').textContent = `${haveReal} / ${total} cards collected` + (S.own[SECRET.id] ? ' · 🤫 secret found' : '') + (S.own[TOKEN.id] ? ' · 🏴‍☠️ PIRATE TOKEN' : '');
     root.querySelector('.prog-bar').style.width = (haveReal / total * 100).toFixed(2) + '%';
     const d = dupes(), tr = root.querySelector('.trade-btn');
@@ -478,9 +508,12 @@
     root.innerHTML = `<div class="cards-ui">
       <div class="cards-top">
         <div class="packinfo"><span>🎁 Packs: <b class="packs-n">0</b></span><button class="cards-btn open-btn">Open a pack</button><span class="timer"></span></div>
+        <div class="packinfo"><span>🍀 Lucky: <b class="lucky-n">0</b></span><button class="cards-btn lucky-btn" style="background:#40c057;color:#fff">Open Lucky Pack</button></div>
         <div class="cards-prog"><small class="prog-t"></small><div class="bar"><i class="prog-bar"></i></div></div>
       </div>
-      <p class="cards-odds" style="margin-top:12px">Every member has 100 cards: #1–50 Common · 51–75 Uncommon · 76–88 Holo Rare · 89–95 Shiny Epic · 96–99 Legendary · #100 Golden one-of-one · 🏴‍☠️ Pirate Token: 1 in 137,500. 3 free packs every 3 minutes (saves up to 10), plus bonus packs for scoring 10+ in Flappy Monkey or clearing 10+ lines in Banana Blocks.</p>
+      <p class="cards-odds" style="margin-top:12px">Every member has 100 cards: #1–50 Common · 51–75 Uncommon · 76–88 Holo Rare · 89–95 Shiny Epic · 96–99 Legendary · #100 Golden one-of-one · 🏴‍☠️ Pirate Token: 1 in 137,500. 3 free packs every 3 minutes (saves up to 10). 🍀 <b>Lucky Packs</b> have way better odds and always have a Rare or better: win them in Card Battle, Whack-a-Monkey, the Monkey Race, Flappy Monkey (10+) and Banana Blocks (10+ lines).</p>
+      <div class="cards-views"><button class="v-col on">📒 Collection</button><button class="v-bt">⚔️ Card Battle</button></div>
+      <div class="battle" hidden></div>
       <div class="cards-main">
         <div>
           <div class="cards-filters"><span class="chips" style="display:contents"></span>
@@ -498,9 +531,17 @@
     </div>`;
     const nm = root.querySelector('.feed-name'); nm.value = Feed.name();
     nm.onchange = () => { LS.set('mb_flappy_name', nm.value.trim().slice(0, 16)); };
-    root.querySelector('.open-btn').onclick = openPack;
+    root.querySelector('.open-btn').onclick = () => openPack(false);
+    root.querySelector('.lucky-btn').onclick = () => openPack(true);
     root.querySelector('.trade-btn').onclick = tradeIn;
     root.querySelector('.sort').onchange = e => { sort = e.target.value; render(); };
+    const setView = v => {
+      root.querySelector('.v-col').classList.toggle('on', v === 'col'); root.querySelector('.v-bt').classList.toggle('on', v === 'bt');
+      root.querySelector('.cards-main').hidden = v !== 'col'; root.querySelector('.battle').hidden = v !== 'bt';
+      if (v === 'bt' && !Battle.on) Battle.intro();
+    };
+    root.querySelector('.v-col').onclick = () => setView('col');
+    root.querySelector('.v-bt').onclick = () => setView('bt');
     render(); tick();
   }
   function show() {
@@ -510,11 +551,282 @@
   }
   function hide() { clearInterval(timerT); timerT = 0; clearInterval(Feed.poll); Feed.poll = 0; }
 
+  /* ------------------------------ Card Battle ------------------------------ */
+  // Every card secretly has all 8 stats (the 3 printed ones are the real values), so any stat can be compared.
+  function allStats(c) {
+    const out = {}, r = rng(hash(c.id + '#all'));
+    STATS.forEach(n => { out[n] = Math.min(99, 8 + Math.floor(r() * 70) + c.lvl * 6); });
+    c.stats.forEach(x => { out[x.name] = x.val; });
+    return out;
+  }
+  const Battle = {
+    on: false,
+    el() { return root.querySelector('.battle'); },
+    intro() {
+      const n = owned().filter(id => !id.startsWith('secret:')).length;
+      this.el().innerHTML = `<div class="bt-score">⚔️ Card Battle</div>
+        <p class="bt-msg">You get 5 of your cards, the computer gets 5. Each round, pick one of your cards and one of its stats.
+        Higher number wins the round. Win the best of 5 to earn a <b>🍀 Lucky Pack</b>.</p>
+        ${n < 5 ? `<p class="bt-msg" style="color:var(--ink2);font-size:14px">You only have ${n} card${n === 1 ? '' : 's'}, so you'll borrow some Commons (marked LOAN).</p>` : ''}
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button class="cards-btn bt-start">🤖 Vs computer</button><button class="cards-btn bt-pvp" style="background:#5865f2;color:#fff">🌐 Vs a friend (online)</button></div>`;
+      this.el().querySelector('.bt-start').onclick = () => { PvP.close(); this.start(); };
+      this.el().querySelector('.bt-pvp').onclick = () => PvP.lobby();
+    },
+    deal() {
+      const ms = members(), pool = owned().filter(id => !id.startsWith('secret:')).map(cardById).filter(Boolean);
+      for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+      const hand = pool.slice(0, 5);
+      while (hand.length < 5) { const c = makeCard(ms[Math.floor(Math.random() * ms.length)], 1 + Math.floor(Math.random() * 50)); c.loan = true; hand.push(c); }
+      return hand;
+    },
+    start() {
+      this.on = true;
+      const ms = members();
+      this.mine = this.deal();
+      // computer gets cards around the same rarity as yours
+      this.cpu = this.mine.map(c => { const lvl = Math.max(0, Math.min(5, c.lvl + Math.floor(Math.random() * 3) - 1)), rar = RAR[lvl];
+        return makeCard(ms[Math.floor(Math.random() * ms.length)], rar.from + Math.floor(Math.random() * (rar.to - rar.from + 1))); });
+      this.used = []; this.results = []; this.round = 0; this.cur = null;
+      this.board('Computer');
+      this.draw();
+    },
+    board(opp) {
+      this.el().innerHTML = `<div class="bt-score"></div><div class="bt-dots"></div>
+        <div class="bt-table">
+          <div class="bt-side"><h5>Your card</h5><div class="bt-slot me"></div></div>
+          <div class="bt-vs">VS</div>
+          <div class="bt-side"><h5 class="bt-oppname">${esc(opp)}</h5><div class="bt-slot cpu"></div></div>
+        </div>
+        <div class="bt-pick"></div><p class="bt-msg"></p><div class="bt-act"></div>
+        <h5 style="margin:18px 0 0;font-size:13px;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em">Your hand</h5><div class="bt-hand"></div>`;
+    },
+    w() { return window.innerWidth < 600 ? Math.min(150, Math.floor((window.innerWidth - 80) / 2)) : 190; },
+    draw() {
+      const E = s => this.el().querySelector(s), you = this.results.filter(r => r === 'w').length, them = this.results.filter(r => r === 'l').length;
+      E('.bt-score').textContent = this.round < 5 ? `You ${you} – ${them} Computer · Round ${this.round + 1} of 5` : `Final: You ${you} – ${them} Computer`;
+      E('.bt-dots').innerHTML = Array.from({ length: 5 }, (_, i) => `<i class="${this.results[i] || ''}"></i>`).join('');
+      const me = E('.bt-slot.me'), cpu = E('.bt-slot.cpu');
+      me.innerHTML = ''; cpu.innerHTML = '';
+      if (this.cur != null) { const c = cardEl(this.mine[this.cur], this.w()); tiltIf(c); me.appendChild(c); }
+      else me.innerHTML = '<div class="empty">Pick a card from your hand below</div>';
+      if (this.round < 5) { const b = document.createElement('div'); b.className = 'tc back'; b.style.setProperty('--w', this.w() + 'px'); b.innerHTML = '<div class="in">🐒</div>'; cpu.appendChild(b); }
+      // stat buttons
+      const pk = E('.bt-pick'); pk.innerHTML = '';
+      if (this.cur != null && this.round < 5) this.mine[this.cur].stats.forEach(st => {
+        const b = document.createElement('button'); b.textContent = `${st.name} ${st.val}`; b.onclick = () => this.play(st.name); pk.appendChild(b); });
+      E('.bt-msg').innerHTML = this.round < 5 ? (this.cur == null ? 'Choose a card to play.' : 'Now pick the stat you think beats theirs.') : '';
+      E('.bt-act').innerHTML = '';
+      // hand
+      const hand = E('.bt-hand'); hand.innerHTML = '';
+      this.mine.forEach((c, i) => {
+        const el = cardEl(c, window.innerWidth < 600 ? 96 : 118);
+        if (c.loan) { const t = document.createElement('span'); t.className = 'loan'; t.textContent = 'LOAN'; el.appendChild(t); }
+        if (this.used.includes(i)) el.classList.add('used');
+        else { if (i === this.cur) el.classList.add('sel'); el.onclick = () => { if (this.round < 5) { this.cur = i; this.draw(); } }; }
+        hand.appendChild(el);
+      });
+    },
+    play(stat) {
+      const E = s => this.el().querySelector(s), mine = this.mine[this.cur], theirs = this.cpu[this.round];
+      const a = allStats(mine)[stat], b = allStats(theirs)[stat], res = a > b ? 'w' : a < b ? 'l' : 't';
+      this.results.push(res); this.used.push(this.cur);
+      const cpu = E('.bt-slot.cpu'); cpu.innerHTML = ''; const c = cardEl(theirs, this.w()); tiltIf(c); cpu.appendChild(c);
+      E('.bt-pick').innerHTML = '';
+      beep(res === 'w' ? [523, 784] : res === 'l' ? [330, 220] : [440, 440], .1);
+      E('.bt-msg').innerHTML = `Your ${esc(stat)} <b>${a}</b> vs their ${esc(stat)} <b>${b}</b>: ` +
+        (res === 'w' ? '<span class="w">you win the round!</span>' : res === 'l' ? '<span class="l">they win the round.</span>' : 'tie.');
+      this.round++; const done = this.round >= 5;
+      const you = this.results.filter(r => r === 'w').length, them = this.results.filter(r => r === 'l').length;
+      E('.bt-score').textContent = `You ${you} – ${them} Computer` + (done ? '' : ` · next: round ${this.round + 1} of 5`);
+      E('.bt-dots').innerHTML = Array.from({ length: 5 }, (_, i) => `<i class="${this.results[i] || ''}"></i>`).join('');
+      const act = E('.bt-act'); const btn = document.createElement('button'); btn.className = 'cards-btn';
+      if (!done) { btn.textContent = 'Next round'; btn.onclick = () => { this.cur = null; this.draw(); }; }
+      else {
+        btn.textContent = 'Play again'; btn.onclick = () => this.start();
+        setTimeout(() => {
+          const m = E('.bt-msg');
+          if (you > them) { m.innerHTML += '<br><b class="w">🏆 You won the battle! +1 🍀 Lucky Pack</b>'; window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'winning a Card Battle', lucky: true } })); }
+          else if (you < them) m.innerHTML += '<br><b class="l">The computer won this one. Run it back?</b>';
+          else m.innerHTML += '<br><b>It\'s a draw. No pack this time.</b>';
+        }, 500);
+      }
+      act.appendChild(btn);
+      E('.bt-hand').querySelectorAll('.tc').forEach((el, i) => { if (this.used.includes(i)) { el.classList.add('used'); el.classList.remove('sel'); el.onclick = null; } });
+    }
+  };
+  /* ---- online Card Battle: each player brings their own cards; you take turns choosing the stat ---- */
+  const PvP = {
+    peer: null, conn: null, host: false, opp: 'Friend', hb: 0, seen: 0, me: '',
+    E(s) { return Battle.el().querySelector(s); },
+    load() {
+      if (window.Peer) return Promise.resolve();
+      const srcs = ['https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js', 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'];
+      return srcs.reduce((p, src) => p.catch(() => new Promise((ok, bad) => {
+        const sc = document.createElement('script'); sc.src = src; sc.onload = () => window.Peer ? ok() : bad(); sc.onerror = bad; document.head.appendChild(sc);
+      })), Promise.reject());
+    },
+    close() { clearInterval(this.hb); this.hb = 0; try { this.conn && this.conn.close(); } catch (e) {} try { this.peer && this.peer.destroy(); } catch (e) {} this.conn = this.peer = null; },
+    send(m) { try { if (this.conn && this.conn.open) this.conn.send(m); } catch (e) {} },
+    lobby(msg) {
+      this.close(); Battle.on = false;
+      Battle.el().innerHTML = `<div class="bt-score">🌐 Card Battle online</div>
+        <p class="bt-msg">Battle a friend with your real cards. One of you makes a room, the other joins with the code. You take turns choosing the stat. The winner gets a <b>🍀 Lucky Pack</b>.</p>
+        <div style="max-width:340px;margin:0 auto;display:flex;flex-direction:column;gap:10px">
+          <input class="pv-name" maxlength="16" placeholder="Your name" style="font:inherit;font-size:16px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-align:center">
+          <button class="cards-btn pv-create">Create room</button>
+          <div style="display:flex;gap:8px"><input class="pv-code" maxlength="4" placeholder="CODE" autocomplete="off" style="flex:1;min-width:0;font:inherit;font-size:16px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-align:center;letter-spacing:.3em;text-transform:uppercase;font-weight:700"><button class="cards-btn ghost pv-join">Join</button></div>
+          <button class="cards-btn ghost pv-back">← Back</button>
+          <p class="bt-msg pv-msg" style="color:#e5484d">${esc(msg || '')}</p>
+        </div>`;
+      const nm = this.E('.pv-name'); nm.value = Feed.name();
+      const code = this.E('.pv-code'); code.oninput = () => { code.value = code.value.toUpperCase().replace(/[^A-Z]/g, ''); };
+      code.onkeydown = e => { if (e.key === 'Enter') this.join(); };
+      this.E('.pv-create').onclick = () => this.create();
+      this.E('.pv-join').onclick = () => this.join();
+      this.E('.pv-back').onclick = () => { this.close(); Battle.intro(); };
+    },
+    nameOk() {
+      const v = (this.E('.pv-name').value || '').trim().slice(0, 16);
+      if (!v) { this.E('.pv-msg').textContent = 'Type your name first.'; return false; }
+      this.me = v; LS.set('mb_flappy_name', v); const fn = root.querySelector('.feed-name'); if (fn) fn.value = v; return true;
+    },
+    room: c => 'monkeyboyz-cb-' + c.toLowerCase(),
+    create() {
+      if (!this.nameOk()) return; this.E('.pv-msg').textContent = 'Making a room…';
+      const L = 'ABCDEFGHJKMNPQRSTUVWXYZ', code = Array.from({ length: 4 }, () => L[Math.floor(Math.random() * L.length)]).join('');
+      this.load().then(() => {
+        this.close(); this.host = true;
+        const peer = this.peer = new Peer(this.room(code));
+        peer.on('open', () => {
+          Battle.el().innerHTML = `<div class="bt-score">Room code</div><div style="font-size:44px;font-weight:900;letter-spacing:.25em;color:#f5b700">${code}</div>
+            <p class="bt-msg">Send this to your friend. They open Monkey Cards → Card Battle → Vs a friend, and type it in.</p>
+            <div style="display:flex;gap:10px;justify-content:center"><button class="cards-btn ghost pv-copy">Copy code</button><button class="cards-btn ghost pv-cancel">Cancel</button></div>
+            <p class="bt-msg pv-wait" style="color:var(--ink2)">Waiting for your friend…</p>`;
+          this.E('.pv-copy').onclick = () => { try { navigator.clipboard.writeText(code); this.E('.pv-wait').textContent = 'Copied! Waiting for your friend…'; } catch (e) {} };
+          this.E('.pv-cancel').onclick = () => this.lobby();
+        });
+        peer.on('connection', conn => {
+          if (this.conn && this.conn.open) { conn.on('open', () => { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 400); }); return; }
+          this.wire(conn); conn.on('open', () => this.send({ t: 'hi', name: this.me || Feed.name() || 'Friend' }));
+        });
+        peer.on('error', e => { if (e.type === 'unavailable-id') return this.create(); if (!this.conn) this.lobby('Couldn\'t make a room (' + (e.type || 'network') + ').'); });
+      }).catch(() => this.lobby('Couldn\'t load online play. Check your connection.'));
+    },
+    join() {
+      const code = (this.E('.pv-code').value || '').toUpperCase().trim();
+      if (!/^[A-Z]{4}$/.test(code)) { this.E('.pv-msg').textContent = 'Type the 4-letter room code.'; return; }
+      if (!this.nameOk()) return; this.E('.pv-msg').textContent = 'Connecting…';
+      this.load().then(() => {
+        this.close(); this.host = false;
+        const peer = this.peer = new Peer(); let done = false;
+        const fail = m => { if (done) return; done = true; this.lobby(m); };
+        const t = setTimeout(() => fail('Couldn\'t reach that room. Check the code.'), 15000);
+        peer.on('open', () => { const conn = peer.connect(this.room(code), { reliable: true }); this.wire(conn);
+          conn.on('open', () => { done = true; clearTimeout(t); this.send({ t: 'hi', name: this.me || Feed.name() || 'Friend' }); }); });
+        peer.on('error', e => { clearTimeout(t); fail(e.type === 'peer-unavailable' ? 'No room with that code.' : 'Connection problem (' + (e.type || 'network') + ').'); });
+      }).catch(() => this.lobby('Couldn\'t load online play. Check your connection.'));
+    },
+    wire(conn) {
+      this.conn = conn; this.seen = Date.now();
+      conn.on('data', m => { this.seen = Date.now(); this.onMsg(m); });
+      conn.on('close', () => { if (this.conn === conn) { this.conn = null; this.left(); } });
+      clearInterval(this.hb);
+      this.hb = setInterval(() => { if (this.conn !== conn) return; this.send({ t: 'hb' }); if (conn.open && Date.now() - this.seen > 30000) { this.conn = null; this.left(); } }, 3000);
+    },
+    left() { if (!this.peer && !this.conn) return; const n = this.opp; this.close(); if (root && !root.querySelector('.battle').hidden) this.lobby(n + ' left the battle.'); },
+    ready() {
+      Battle.el().innerHTML = `<div class="bt-score">Vs ${esc(this.opp)}</div><p class="bt-msg">You're connected! Best of 5. You'll take turns picking the stat.</p>
+        <button class="cards-btn pv-go">Start battle</button>`;
+      this.E('.pv-go').onclick = () => { this.send({ t: 'go' }); this.start(); };
+    },
+    onMsg(m) {
+      if (!m || typeof m !== 'object') return;
+      if (m.t === 'hi') { this.opp = String(m.name || 'Friend').slice(0, 16); if (!this.st) this.ready(); }
+      else if (m.t === 'full') this.lobby('That room already has two players.');
+      else if (m.t === 'go') this.start();
+      else if (m.t === 'play' && this.st) { const r = Number(m.round); if (r >= 0 && r < 5 && typeof m.card === 'string' && /^[a-z0-9 _.-]+:\d{1,3}$/i.test(m.card)) { this.st.opp[r] = { card: m.card, stat: STATS.includes(m.stat) ? m.stat : null }; this.resolve(); this.draw(); } }
+    },
+    start() {
+      this.st = { mine: Battle.deal(), used: [], results: [], round: 0, cur: null, my: [], opp: [], shown: -1 };
+      Battle.on = true; Battle.board(this.opp); this.draw();
+    },
+    chooserIsMe(r) { return (r % 2 === 0) === this.host; },
+    w() { return window.innerWidth < 600 ? Math.min(150, Math.floor((window.innerWidth - 80) / 2)) : 190; },
+    draw() {
+      const st = this.st, E = s => this.E(s); if (!st || !E('.bt-score')) return;
+      const r = st.round, you = st.results.filter(x => x === 'w').length, them = st.results.filter(x => x === 'l').length;
+      E('.bt-score').textContent = r < 5 ? `You ${you} – ${them} ${this.opp} · Round ${r + 1} of 5` : `Final: You ${you} – ${them} ${this.opp}`;
+      E('.bt-dots').innerHTML = Array.from({ length: 5 }, (_, i) => `<i class="${st.results[i] || ''}"></i>`).join('');
+      if (st.shown === r - 1 && r > 0 && st.revealed) return;   // keep the last reveal on screen until "Next round"
+      const me = E('.bt-slot.me'), op = E('.bt-slot.cpu'); me.innerHTML = ''; op.innerHTML = '';
+      const showIdx = st.my[r] ? st.my[r].idx : st.cur;
+      if (showIdx != null) me.appendChild(cardEl(st.mine[showIdx], this.w())); else me.innerHTML = '<div class="empty">Pick a card from your hand below</div>';
+      const b = document.createElement('div'); b.className = 'tc back'; b.style.setProperty('--w', this.w() + 'px'); b.innerHTML = '<div class="in">' + (st.opp[r] ? '✅' : '🐒') + '</div>'; op.appendChild(b);
+      const pk = E('.bt-pick'); pk.innerHTML = ''; const act = E('.bt-act'); act.innerHTML = '';
+      const chooser = this.chooserIsMe(r);
+      if (r < 5 && !st.my[r]) {
+        if (st.cur != null && chooser) st.mine[st.cur].stats.forEach(s2 => { const bt = document.createElement('button'); bt.textContent = `${s2.name} ${s2.val}`; bt.onclick = () => this.play(s2.name); pk.appendChild(bt); });
+        if (st.cur != null && !chooser) { const bt = document.createElement('button'); bt.className = 'cards-btn'; bt.textContent = 'Lock in this card'; bt.onclick = () => this.play(null); act.appendChild(bt); }
+        E('.bt-msg').innerHTML = (chooser ? '<b>You choose the stat this round.</b> ' : `<b>${esc(this.opp)} chooses the stat this round.</b> `) + (st.cur == null ? 'Pick a card from your hand.' : chooser ? 'Now pick the stat.' : 'Lock it in when you\'re ready.');
+      } else if (r < 5) E('.bt-msg').innerHTML = `Locked in. Waiting for ${esc(this.opp)}…`;
+      const hand = E('.bt-hand'); hand.innerHTML = '';
+      st.mine.forEach((c, i) => {
+        const el = cardEl(c, window.innerWidth < 600 ? 96 : 118);
+        if (c.loan) { const t = document.createElement('span'); t.className = 'loan'; t.textContent = 'LOAN'; el.appendChild(t); }
+        if (st.used.includes(i)) el.classList.add('used');
+        else if (!st.my[r]) { if (i === st.cur) el.classList.add('sel'); el.onclick = () => { st.cur = i; this.draw(); }; }
+        hand.appendChild(el);
+      });
+    },
+    play(stat) {
+      const st = this.st, r = st.round; if (st.cur == null || st.my[r]) return;
+      const c = st.mine[st.cur]; st.my[r] = { card: c.id, stat, idx: st.cur }; st.used.push(st.cur); st.cur = null;
+      this.send({ t: 'play', round: r, card: c.id, stat }); beep([520], .05);
+      this.resolve(); this.draw();
+    },
+    resolve() {
+      const st = this.st, r = st.round, a = st.my[r], b = st.opp[r];
+      if (!a || !b || st.revealedRound === r) return;
+      const stat = this.chooserIsMe(r) ? a.stat : b.stat; if (!stat) return;
+      st.revealedRound = r;
+      const mineC = st.mine[a.idx], theirs = cardById(b.card) || makeCard(members()[0], 1);
+      const x = allStats(mineC)[stat], y = allStats(theirs)[stat], res = x > y ? 'w' : x < y ? 'l' : 't';
+      st.results.push(res); st.round++; st.shown = r; st.revealed = true;
+      const E = s => this.E(s);
+      setTimeout(() => {
+        E('.bt-slot.me').innerHTML = ''; E('.bt-slot.me').appendChild(cardEl(mineC, this.w()));
+        E('.bt-slot.cpu').innerHTML = ''; E('.bt-slot.cpu').appendChild(cardEl(theirs, this.w()));
+        E('.bt-pick').innerHTML = ''; E('.bt-hand').querySelectorAll('.tc').forEach(el => { el.onclick = null; el.classList.remove('sel'); });
+        beep(res === 'w' ? [523, 784] : res === 'l' ? [330, 220] : [440, 440], .1);
+        E('.bt-msg').innerHTML = `${esc(stat)}: your <b>${x}</b> vs ${esc(this.opp)}'s <b>${y}</b>: ` + (res === 'w' ? '<span class="w">you win the round!</span>' : res === 'l' ? `<span class="l">${esc(this.opp)} wins the round.</span>` : 'tie.');
+        const you = st.results.filter(z => z === 'w').length, them = st.results.filter(z => z === 'l').length;
+        E('.bt-score').textContent = `You ${you} – ${them} ${this.opp}` + (st.round < 5 ? ` · next: round ${st.round + 1} of 5` : '');
+        E('.bt-dots').innerHTML = Array.from({ length: 5 }, (_, i) => `<i class="${st.results[i] || ''}"></i>`).join('');
+        const act = E('.bt-act'); act.innerHTML = ''; const btn = document.createElement('button'); btn.className = 'cards-btn';
+        if (st.round < 5) { btn.textContent = 'Next round'; btn.onclick = () => { st.revealed = false; this.draw(); }; }
+        else {
+          btn.textContent = 'Rematch'; btn.onclick = () => { this.send({ t: 'go' }); this.start(); };
+          if (you > them) { E('.bt-msg').innerHTML += `<br><b class="w">🏆 You beat ${esc(this.opp)}! +1 🍀 Lucky Pack</b>`; window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'beating ' + this.opp + ' in Card Battle', lucky: true } })); }
+          else if (you < them) E('.bt-msg').innerHTML += `<br><b class="l">${esc(this.opp)} won the battle.</b>`;
+          else E('.bt-msg').innerHTML += '<br><b>Draw! No pack this time.</b>';
+        }
+        act.appendChild(btn);
+      }, 450);
+    }
+  };
+
+  function tiltIf(c) { if (matchMedia('(hover: hover)').matches) tilt(c); }
+
   /* ------------------------------ toasts & bonus packs ------------------------------ */
   function toast(t) { const d = document.createElement('div'); d.className = 'gb-toast'; d.textContent = t; css(); document.body.appendChild(d); setTimeout(() => d.remove(), 4600); }
+  // other games call this: window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why, lucky: true, count: 1 } }))
   window.addEventListener('mb:pack', e => {
-    S = LS.get('mb_cards', S); S.packs = Math.min(20, (S.packs || 0) + 1); save(); render();
-    toast('🃏 +1 card pack' + (e.detail && e.detail.why ? ' for ' + e.detail.why : '') + '! Open it in Games → Monkey Cards');
+    const d = e.detail || {}, n = Math.max(1, Math.min(5, d.count || 1));
+    S = LS.get('mb_cards', S); if (S.lucky == null) S.lucky = 0;
+    if (d.lucky) S.lucky = Math.min(50, S.lucky + n); else S.packs = Math.min(20, (S.packs || 0) + n);
+    save(); render();
+    toast((d.lucky ? '🍀 +' + n + ' Lucky Pack' + (n > 1 ? 's' : '') : '🃏 +' + n + ' card pack' + (n > 1 ? 's' : '')) + (d.why ? ' for ' + d.why : '') + '! Open in Games → Monkey Cards');
   });
 
   /* ------------------------------ Gerson easter egg ------------------------------ */

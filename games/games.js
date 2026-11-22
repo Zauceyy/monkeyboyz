@@ -282,9 +282,13 @@
     document.getElementById('gameBlocks').style.display = which === 'blocks' ? '' : 'none';
     document.getElementById('gameFlash').style.display = which === 'flash' ? '' : 'none';
     document.getElementById('gameCards').style.display = which === 'cards' ? '' : 'none';
-    const B = window.MBBlocks, F = window.MBFlash, K = window.MBCards;
+    document.getElementById('gameWhack').style.display = which === 'whack' ? '' : 'none';
+    document.getElementById('gameRace').style.display = which === 'race' ? '' : 'none';
+    const B = window.MBBlocks, F = window.MBFlash, K = window.MBCards, W = window.MBWhack, RC = window.MBRace;
     if (which !== 'flash' && F) F.hide();
     if (which !== 'cards' && K) K.hide();
+    if (which !== 'whack' && W) W.hide();
+    if (which !== 'race' && RC) RC.hide();
     if (which !== 'flappy') Flappy.stop();
     if (which !== 'clicker') Clicker.stop();
     if (which !== 'blocks' && B) B.stop();
@@ -292,6 +296,8 @@
     else if (which === 'clicker') Clicker.start();
     else if (which === 'flash') { if (F) F.show(); }
     else if (which === 'cards') { if (K) K.show(); }
+    else if (which === 'whack') { if (W) W.show(); }
+    else if (which === 'race') { if (RC) RC.show(); }
     else if (B) B.start();
   }
   window.MBGames = {
@@ -299,16 +305,18 @@
       if (!inited) {
         inited = true;
         Board.init(document.getElementById('flappyBoard'));
-        Flappy.init(document.getElementById('flappyCanvas'), { onOver: s => { Board.offer(s); if (s >= 10) window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'scoring ' + s + ' in Flappy Monkey' } })); } });
+        Flappy.init(document.getElementById('flappyCanvas'), { onOver: s => { Board.offer(s); if (s >= 10) window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'scoring ' + s + ' in Flappy Monkey', lucky: true } })); } });
         Clicker.init(document.getElementById('clickerRoot'));
         if (window.MBBlocks) MBBlocks.init(document.getElementById('blocksRoot'));
         if (window.MBFlash) MBFlash.init(document.getElementById('flashRoot'));
         if (window.MBCards) MBCards.init(document.getElementById('cardsRoot'));
+        if (window.MBWhack) MBWhack.init(document.getElementById('whackRoot'));
+        if (window.MBRace) MBRace.init(document.getElementById('raceRoot'));
         document.querySelectorAll('.game-pick').forEach(b => b.onclick = () => pick(b.dataset.game));
       }
       pick(current);
     },
-    hide() { Flappy.stop(); Clicker.stop(); if (window.MBBlocks) MBBlocks.stop(); if (window.MBFlash) MBFlash.hide(); if (window.MBCards) MBCards.hide(); }
+    hide() { Flappy.stop(); Clicker.stop(); if (window.MBBlocks) MBBlocks.stop(); if (window.MBFlash) MBFlash.hide(); if (window.MBCards) MBCards.hide(); if (window.MBWhack) MBWhack.hide(); if (window.MBRace) MBRace.hide(); }
   };
   document.addEventListener('visibilitychange', () => { if (document.hidden) window.MBGames.hide(); });
 })();
