@@ -271,6 +271,16 @@
   .bb-vs-bar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
   .bb-vs-bar .bb-toggle{text-align:center}
   .bb-vs-keys{color:var(--ink2);font-size:12px;text-align:center;margin-top:8px;line-height:1.6}
+  .bb-rivals{max-width:420px;margin:22px auto 0;background:var(--tile);border-radius:18px;padding:16px 18px;text-align:left}
+  .bb-rivals h4{margin:0 0 8px;font-size:15px}
+  .bb-rivals ul{list-style:none;margin:0;padding:0}
+  .bb-rivals li{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:15px}
+  .bb-rivals li:last-child{border-bottom:0}
+  .bb-rivals li span:last-child{text-align:right}
+  .bb-rivals li .lead{font-weight:700}
+  .bb-rivals li b{font-variant-numeric:tabular-nums}
+  .bb-riv-empty{color:var(--ink2);font-size:14px;margin:0}
+  .bb-ov-in .bb-alltime{color:#ffd43b;font-weight:600;min-height:20px}
   @media (max-width:760px){
     .bb-vs{gap:10px;min-height:360px}
     .bb-p-mini{width:46px;font-size:9px}
@@ -326,7 +336,7 @@
       </div>
       <div class="bb-vs-bar"><button class="bb-toggle bb-music"></button><button class="bb-toggle bb-sfx"></button>${online ? '' : '<button class="bb-toggle bb-pause">⏸ Pause</button>'}</div>
       <div class="bb-vs-keys bb-keys">${keys}</div>
-      ${online ? PAD : ''}`;
+      ${online ? PAD + '<div class="bb-rivals"></div>' : ''}`;
   }
 
   /* ---------- overlay ---------- */
@@ -379,7 +389,7 @@
         G.opp = { cv: q('.opp .bb-board'), name: q('.opp .bb-n'), lines: q('.opp .bb-ln'), meter: q('.opp .bb-meter'), snap: '' };
         G.opp.ctx = setupCanvas(G.opp.cv, 18);
         q('.p0 .bb-n').textContent = myName() || 'You'; G.opp.name.textContent = 'Friend';
-        drawOpp(); lobby();
+        drawOpp(); lobby(); Rec.render(); Rec.load();
       }
     }
     // touch pad acts on your own board (solo / online)
@@ -413,9 +423,54 @@
       const won = winner === 0;
       if (won) setTimeout(() => Audio.sfx('win'), 300);
       Net.score[won ? 0 : 1]++;
-      overlay(`<h3>${won ? '🏆 You win!' : 'You lost 🙈'}</h3><p>You ${Net.score[0]} – ${Net.score[1]} ${esc(Net.oppName)}</p><button class="bb-ov-b bb-go">Rematch</button><p class="bb-msg"></p>`, { '.bb-go': rematch });
+      overlay(`<h3>${won ? '🏆 You win!' : 'You lost 🙈'}</h3><p>Tonight: You ${Net.score[0]} – ${Net.score[1]} ${esc(Net.oppName)}</p><p class="bb-alltime"></p><button class="bb-ov-b bb-go">Rematch</button><p class="bb-msg"></p>`, { '.bb-go': rematch });
+      const me = myName(), opp = Net.oppName;
+      // the winner's browser saves the result; the match ID (same on both sides) stops double counting
+      if (won) Rec.post(me, opp, 'bb-' + G.seed + '-' + [me, opp].map(x => x.toLowerCase()).sort().join('-'));
+      else setTimeout(() => Rec.load(), 3500);
     }
   }
+
+  /* ---------- all-time head-to-head records (saved in the site's Google Sheet) ---------- */
+  const Rec = {
+    list: [],
+    device() { let id = null; try { id = localStorage.getItem('mb_voter'); } catch (e) {}
+      if (!id) { id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)); try { localStorage.setItem('mb_voter', id); } catch (e) {} } return id; },
+    load() {
+      if (!window.MB_API) return;
+      fetch(window.MB_API + '?action=rivals').then(r => r.json()).then(d => { if (d.ok) { this.list = d.rivals || []; this.render(); } }).catch(() => {});
+    },
+    post(winner, loser, matchId) {
+      if (!window.MB_API || !winner || !loser) return;
+      fetch(window.MB_API, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'match', winner, loser, matchId, voter: this.device() }) })
+        .then(r => r.json()).then(d => { if (d.ok && d.rivals) { this.list = d.rivals; this.render(); } }).catch(() => {});
+    },
+    h2h(a, b) {
+      const A = (a || '').toLowerCase(), B = (b || '').toLowerCase();
+      const r = this.list.find(x => (x.a.toLowerCase() === A && x.b.toLowerCase() === B) || (x.a.toLowerCase() === B && x.b.toLowerCase() === A));
+      if (!r) return null;
+      return r.a.toLowerCase() === A ? [r.aw, r.bw] : [r.bw, r.aw];
+    },
+    render() {
+      const box = root && root.querySelector('.bb-rivals');
+      if (box) {
+        if (!this.list.length) box.innerHTML = '<h4>Rivalries</h4><p class="bb-riv-empty">No online matches yet. Win one to get on the board.</p>';
+        else {
+          box.innerHTML = '<h4>Rivalries</h4>';
+          const ul = document.createElement('ul');
+          this.list.slice(0, 12).forEach(r => {
+            const li = document.createElement('li');
+            const lead = r.aw === r.bw ? 0 : r.aw > r.bw ? 1 : 2;
+            li.innerHTML = `<span class="${lead === 1 ? 'lead' : ''}">${esc(r.a)}</span><b>${r.aw} – ${r.bw}</b><span class="${lead === 2 ? 'lead' : ''}">${esc(r.b)}</span>`;
+            ul.appendChild(li);
+          });
+          box.appendChild(ul);
+        }
+      }
+      const at = el.ovIn && el.ovIn.querySelector('.bb-alltime');
+      if (at && G.mode === 'online') { const h = this.h2h(myName(), Net.oppName); at.textContent = h ? `All-time: You ${h[0]} – ${h[1]} ${Net.oppName}` : ''; }
+    }
+  };
   function rematch() { const seed = 1 + Math.floor(Math.random() * 1e9); Net.send({ t: 'go', seed }); countdown(seed); }
   function pause() {
     if (G.mode === 'online') return;              // can't pause a live match
@@ -427,7 +482,7 @@
 
   /* ---------- online (PeerJS: direct browser-to-browser) ---------- */
   const Net = {
-    peer: null, conn: null, score: [0, 0], oppName: 'Friend', lastSent: 0, lastSnap: '',
+    peer: null, conn: null, score: [0, 0], oppName: 'Friend', lastSent: 0, lastSnap: '', seen: 0, hb: 0,
     load() {
       if (window.Peer) return Promise.resolve();
       const srcs = ['https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js', 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'];
@@ -439,11 +494,21 @@
       try { this.conn && this.conn.close(); } catch (e) {}
       try { this.peer && this.peer.destroy(); } catch (e) {}
       this.conn = null; this.peer = null; this.score = [0, 0];
+      clearInterval(this.hb); this.hb = 0;
     },
     send(m) { try { if (this.conn && this.conn.open) this.conn.send(m); } catch (e) {} },
     wire(conn) {
-      this.conn = conn;
-      conn.on('data', onNet);
+      this.conn = conn; this.seen = Date.now();
+      conn.on('data', m => { this.seen = Date.now(); onNet(m); });
+      conn.on('open', () => { this.seen = Date.now(); });
+      // heartbeat: if we hear nothing for a while, the friend closed their tab or lost connection
+      clearInterval(this.hb);
+      this.hb = setInterval(() => {
+        if (this.conn !== conn) return;
+        this.send({ t: 'hb' });
+        const quiet = Date.now() - this.seen, limit = G.state === 'play' ? 15000 : 90000;
+        if (conn.open && quiet > limit) { this.conn = null; friendLeft(); }
+      }, 2000);
       conn.on('close', () => { if (this.conn !== conn) return; this.conn = null; friendLeft(); });
       conn.on('error', () => {});
     }
@@ -462,12 +527,14 @@
     code.addEventListener('input', () => { code.value = code.value.toUpperCase().replace(/[^A-Z]/g, ''); });
   }
   function saveName() {
-    const n = el.ovIn.querySelector('.bb-name'); const v = n ? n.value.trim().slice(0, 16) : '';
+    const n = el.ovIn.querySelector('.bb-name'); const v = n ? n.value.trim().replace(/\s+/g, ' ').slice(0, 16) : '';
     sessionName = v; if (v) LS.set('mb_flappy_name', v);
     root.querySelector('.p0 .bb-n').textContent = v || 'You';
+    if (!v) { ovMsg('Type your name first so your wins get saved.'); if (n) n.focus(); }
+    return v;
   }
   function createRoom() {
-    saveName(); ovMsg('Making a room…');
+    if (!saveName()) return; ovMsg('Making a room…');
     const letters = 'ABCDEFGHJKMNPQRSTUVWXYZ';
     const code = Array.from({ length: 4 }, () => letters[Math.floor(Math.random() * letters.length)]).join('');
     Net.load().then(() => {
@@ -492,7 +559,7 @@
   function joinRoom() {
     const code = (el.ovIn.querySelector('.bb-code').value || '').toUpperCase().trim();
     if (!/^[A-Z]{4}$/.test(code)) { ovMsg('Type the 4-letter room code.'); return; }
-    saveName(); ovMsg('Connecting…');
+    if (!saveName()) return; ovMsg('Connecting…');
     Net.load().then(() => {
       Net.close();
       const peer = Net.peer = new Peer();
@@ -508,7 +575,8 @@
     }).catch(() => lobby('Couldn\'t load online play. Check your connection and try again.'));
   }
   function ready() {
-    overlay(`<h3>Vs ${esc(Net.oppName)}</h3><p>You're connected. Either of you can start, and you'll both get the same blocks in the same order.</p><button class="bb-ov-b bb-go">Start match</button><p class="bb-msg"></p>`, { '.bb-go': rematch });
+    overlay(`<h3>Vs ${esc(Net.oppName)}</h3><p>You're connected. Either of you can start, and you'll both get the same blocks in the same order.</p><p class="bb-alltime"></p><button class="bb-ov-b bb-go">Start match</button><p class="bb-msg"></p>`, { '.bb-go': rematch });
+    Rec.render();
   }
   function friendLeft() {
     if (G.mode !== 'online') return;

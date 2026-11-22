@@ -92,6 +92,37 @@
   .card h4{font-size:21px;font-weight:600;margin:16px 4px 4px}
   #gallery .card{cursor:pointer;outline:none}
   #gallery .card:focus-visible .ph{box-shadow:0 0 0 3px var(--link)}
+  [hidden]{display:none!important}
+  /* new video strip */
+  .newvid{display:flex;align-items:center;justify-content:center;gap:10px;background:#ff0033;color:#fff;text-decoration:none;font-size:15px;padding:10px 46px 10px 16px;position:relative;line-height:1.3;text-align:center}
+  .newvid b{font-weight:700}
+  .newvid .nv-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:min(560px,60vw)}
+  .newvid .nv-x{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:0;background:rgba(255,255,255,.22);color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:13px}
+  /* birthday */
+  .bday{display:inline-flex;align-items:center;gap:14px;background:linear-gradient(135deg,#ffe066,#ff8fab);color:#1d1d1f;border-radius:980px;padding:8px 22px 8px 8px;margin:0 auto 22px;cursor:pointer;border:0;font:inherit;box-shadow:0 10px 30px rgba(255,143,171,.35);animation:bdayIn .6s ease}
+  .bday img{width:52px;height:52px;border-radius:50%;object-fit:cover;background:#fff}
+  .bday b{font-size:19px;letter-spacing:-.01em}
+  .bday span{display:block;font-size:13px;opacity:.75}
+  @keyframes bdayIn{from{transform:scale(.8);opacity:0}to{transform:none;opacity:1}}
+  .confetti{position:fixed;top:-20px;z-index:40;font-size:22px;pointer-events:none;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+  /* discord live */
+  .dc-chip{display:inline-flex;align-items:center;gap:8px;margin:6px auto 0;color:var(--ink2);font-size:14px;text-decoration:none}
+  .dc-chip i,.dc-live .dot{width:9px;height:9px;border-radius:50%;background:#23a55a;display:inline-block;box-shadow:0 0 0 3px rgba(35,165,90,.18)}
+  .dc-live{margin:26px auto 0;max-width:560px;background:rgba(255,255,255,.08);border-radius:20px;padding:18px 20px;text-align:left;color:inherit}
+  .dc-live .dc-counts{display:flex;gap:18px;align-items:center;justify-content:center;font-size:16px}
+  .dc-live .dc-counts b{font-size:22px}
+  .dc-live h5{margin:16px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;opacity:.7}
+  .dc-people{display:flex;flex-wrap:wrap;gap:8px}
+  .dc-p{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.1);border-radius:980px;padding:4px 12px 4px 4px;font-size:14px}
+  .dc-p img{width:26px;height:26px;border-radius:50%}
+  .dc-p .st{width:8px;height:8px;border-radius:50%;background:#23a55a}
+  .dc-p .st.idle{background:#f0b232} .dc-p .st.dnd{background:#f23f43}
+  .dc-home-vc{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;margin:10px auto 0;text-decoration:none;color:var(--ink);font-size:14px;max-width:640px}
+  .dc-home-vc .vc-l{color:var(--ink2)}
+  .dc-home-vc .dc-p{background:var(--tile)}
+  .dc-home-vc .more{color:var(--ink2)}
+  .dc-vc{margin-top:6px} .dc-vc b{font-size:14px;display:block;margin-bottom:6px}
   .mem-modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:20px}
   .mem-modal.show{display:flex;animation:in .2s ease}
   .mem-box{position:relative;background:var(--bg);color:var(--ink);border-radius:26px;width:min(640px,100%);max-height:calc(100vh - 40px);overflow:auto;padding:30px;box-shadow:0 30px 80px rgba(0,0,0,.35)}
@@ -388,10 +419,14 @@
 
 <!-- ================= HOME ================= -->
 <main id="view-home" class="view">
+  <a class="newvid" id="newVid" href="#videos" hidden></a>
   <section class="hero">
+    <div class="bday" id="bday" hidden></div>
     <p class="eyebrow">On YouTube</p>
     <h1 class="h-xl">MonkeyBoyz.</h1>
     <p class="lede">Nine friends who play games together.</p>
+    <a class="dc-chip" id="dcChip" href="#discord" hidden></a>
+    <a class="dc-home-vc" id="dcVoiceHome" href="#discord" hidden></a>
     <div class="links">
       <a class="pill" href="https://www.youtube.com/@YTMonkeyBoyz" target="_blank" rel="noopener">Watch now</a>
       <a class="lnk" href="https://www.youtube.com/@YTMonkeyBoyz?sub_confirmation=1" target="_blank" rel="noopener">Subscribe</a>
@@ -567,6 +602,7 @@
     <p class="lede">Where we hang out, play, and share clips.</p>
     <a class="pill dcb" href="https://discord.gg/Gw9YN9t" target="_blank" rel="noopener">Join the server</a>
     <div class="code">discord.gg/Gw9YN9t</div>
+    <div class="dc-live" id="dcLive" hidden></div>
   </section>
   <div class="grid2" style="padding-bottom:60px">
     <div class="tile light" style="min-height:420px"><p class="eyebrow">Share</p><h2 class="h-m">Post your best clips.</h2><div class="art"><img loading="lazy" src="https://commons.wikimedia.org/wiki/Special:FilePath/Rhesus_macaque_(Macaca_mulatta_mulatta),_male,_Gokarna.jpg?width=900" alt="Macaque"></div></div>
@@ -606,9 +642,9 @@
   </div>
 </div>
 
-<script src="games/blocks.js?v=10"></script>
-<script src="games/flash.js?v=2"></script>
-<script src="games/games.js?v=10"></script>
+<script src="games/blocks.js?v=11"></script>
+<script src="games/flash.js?v=3"></script>
+<script src="games/games.js?v=11"></script>
 <script>
 /* =====================================================================
    Content comes from the MonkeyBoyz backend (edit it at /admin).
@@ -1019,7 +1055,90 @@ const _showVideos = showVideos;
 showVideos = function(){ const f = document.getElementById('vFrame'); if (f && f.dataset.src) { f.src = f.dataset.src.replace('autoplay=1', 'autoplay=0'); delete f.dataset.src; } _showVideos(); };
 
 /* ---------- load ---------- */
-function renderAll(){ renderMembers(); renderMedia(); renderVote(); }
+/* ---------- birthday shoutout (uses each member's birthday from their profile) ---------- */
+function renderBirthday(){
+  const box = document.getElementById('bday'); if (!box) return;
+  const now = new Date(), mm = String(now.getMonth() + 1).padStart(2, '0'), dd = String(now.getDate()).padStart(2, '0');
+  const today = C.members.filter(m => new RegExp('^(?:\\d{4}|-)-' + mm + '-' + dd + '$').test(m.birthday || ''));
+  if (!today.length) { box.hidden = true; return; }
+  box.innerHTML = '';
+  const b = el('button', 'bday'); b.type = 'button';
+  const im = new Image(); im.src = safeUrl(today[0].img); im.alt = '';
+  const names = today.map(m => m.name);
+  const txt = el('div'); txt.appendChild(el('b', null, '🎂 Happy birthday, ' + (names.length > 1 ? names.slice(0, -1).join(', ') + ' & ' + names[names.length - 1] : names[0]) + '!'));
+  txt.appendChild(el('span', null, 'Tap to see their profile'));
+  b.append(im, txt); b.onclick = () => openMember(today[0]);
+  box.replaceWith(b); b.id = 'bday';
+  const key = 'mb_confetti_' + now.toDateString();
+  let shown = false; try { shown = sessionStorage.getItem(key); if (!location.hash || location.hash === '#home') sessionStorage.setItem(key, '1'); } catch (e) {}
+  const onHome = !location.hash || location.hash === '#home';
+  if (onHome && !shown && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    for (let i = 0; i < 40; i++) {
+      const c = el('div', 'confetti', ['🎉','🎊','🎈','🍌','🎂'][i % 5]);
+      c.style.left = Math.random() * 100 + 'vw'; c.style.animationDuration = 2.5 + Math.random() * 2.5 + 's'; c.style.animationDelay = Math.random() * 1.5 + 's';
+      document.body.appendChild(c); setTimeout(() => c.remove(), 7000);
+    }
+  }
+}
+
+/* ---------- "new video" strip: shows for 5 days after an upload ---------- */
+async function loadNewVideo(){
+  const bar = document.getElementById('newVid'); if (!bar) return;
+  let d = null; try { d = await fetch(API + '?action=videos').then(r => r.json()); } catch (e) {}
+  const v = d && d.videos && d.videos[0]; if (!v || !v.published) return;
+  const age = (Date.now() - new Date(v.published).getTime()) / 864e5;
+  let dismissed = null; try { dismissed = localStorage.getItem('mb_newvid_x'); } catch (e) {}
+  if (age > 5 || dismissed === v.id) return;
+  bar.innerHTML = '';
+  bar.append(el('b', null, '🆕 New video'), el('span', 'nv-t', v.title), el('span', null, 'Watch ›'));
+  const x = el('button', 'nv-x', '✕'); x.type = 'button'; x.setAttribute('aria-label', 'Hide');
+  x.onclick = e => { e.preventDefault(); e.stopPropagation(); try { localStorage.setItem('mb_newvid_x', v.id); } catch (er) {} bar.hidden = true; };
+  bar.appendChild(x); bar.hidden = false;
+}
+
+/* ---------- Discord: online count (always) + who's on / in voice (when the server widget is on) ---------- */
+const DC_INVITE = 'Gw9YN9t';
+async function loadDiscord(){
+  let inv = null; try { inv = await fetch('https://discord.com/api/v10/invites/' + DC_INVITE + '?with_counts=true').then(r => r.json()); } catch (e) {}
+  if (!inv || !inv.guild) return;
+  const online = inv.approximate_presence_count || 0, total = inv.approximate_member_count || 0;
+  const chip = document.getElementById('dcChip');
+  chip.innerHTML = ''; chip.append(el('i'), document.createTextNode(online.toLocaleString() + ' online on Discord')); chip.hidden = false;
+  const live = document.getElementById('dcLive'); live.innerHTML = '';
+  const counts = el('div', 'dc-counts');
+  const a = el('div'); a.append(el('span', 'dot'), document.createTextNode(' '), el('b', null, online.toLocaleString()), document.createTextNode(' online'));
+  const b = el('div'); b.append(el('b', null, total.toLocaleString()), document.createTextNode(' members'));
+  counts.append(a, b); live.appendChild(counts); live.hidden = false;
+  let w = null; try { const r = await fetch('https://discord.com/api/guilds/' + inv.guild.id + '/widget.json'); if (r.ok) w = await r.json(); } catch (e) {}
+  if (!w || !Array.isArray(w.members)) return;
+  const chans = {}; (w.channels || []).forEach(c => chans[c.id] = c.name);
+  const person = m => { const p = el('span', 'dc-p'); const im = new Image(); im.src = /^https:\/\//.test(m.avatar_url || '') ? m.avatar_url : ''; im.alt = ''; im.loading = 'lazy';
+    p.append(im, el('span', 'st ' + (m.status || 'online')), document.createTextNode(m.username)); return p; };
+  const inVoice = {}; w.members.filter(m => m.channel_id && chans[m.channel_id]).forEach(m => (inVoice[m.channel_id] = inVoice[m.channel_id] || []).push(m));
+  Object.keys(inVoice).forEach(id => {
+    live.appendChild(el('h5', null, '🔊 In voice'));
+    const vc = el('div', 'dc-vc'); vc.appendChild(el('b', null, chans[id]));
+    const ppl = el('div', 'dc-people'); inVoice[id].forEach(m => ppl.appendChild(person(m))); vc.appendChild(ppl); live.appendChild(vc);
+  });
+  // homepage: who's in voice right now
+  const home = document.getElementById('dcVoiceHome');
+  if (home) {
+    home.innerHTML = '';
+    const ids = Object.keys(inVoice);
+    if (ids.length) {
+      const total = ids.reduce((n, id) => n + inVoice[id].length, 0);
+      home.appendChild(el('span', 'vc-l', '🔊 In voice' + (ids.length === 1 ? ' · ' + chans[ids[0]] : '') + ':'));
+      ids.flatMap(id => inVoice[id]).slice(0, 8).forEach(m => home.appendChild(person(m)));
+      if (total > 8) home.appendChild(el('span', 'more', '+' + (total - 8) + ' more'));
+      home.hidden = false;
+    } else home.hidden = true;
+  }
+  const others = w.members.filter(m => !m.channel_id).slice(0, 30);
+  if (others.length) { live.appendChild(el('h5', null, 'Online now')); const ppl = el('div', 'dc-people'); others.forEach(m => ppl.appendChild(person(m))); live.appendChild(ppl); }
+}
+loadNewVideo(); loadDiscord(); setInterval(loadDiscord, 120000);
+
+function renderAll(){ renderMembers(); renderMedia(); renderVote(); renderBirthday(); }
 renderAll();
 fetch(API + '?action=content').then(r => r.json()).then(d => {
   if (d && d.ok && d.content && Array.isArray(d.content.members)) { C = d.content; renderAll(); }

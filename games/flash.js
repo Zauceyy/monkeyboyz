@@ -44,7 +44,7 @@
     return loading;
   }
 
-  function msg(t) { stage.querySelectorAll('.fl-msg').forEach(n => n.remove()); if (t) { const m = document.createElement('div'); m.className = 'fl-msg'; m.textContent = t; stage.appendChild(m); } }
+  function msg(t) { if (!stage) return; stage.querySelectorAll('.fl-msg').forEach(n => n.remove()); if (t) { const m = document.createElement('div'); m.className = 'fl-msg'; m.textContent = t; stage.appendChild(m); } }
 
   function unload() {
     if (player) { try { player.remove(); } catch (e) {} player = null; }
@@ -95,7 +95,7 @@
     let last = null; try { last = localStorage.getItem('mb_flash_last'); } catch (e) {}
     play(current || GAMES.find(g => g.id === last) || GAMES[0]);
   }
-  function hide() { shown = false; unload(); msg(''); }
+  function hide() { shown = false; if (!root) return; unload(); msg(''); }
 
   window.MBFlash = { init, show, hide };
 })();

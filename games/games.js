@@ -133,7 +133,7 @@
       { id: 'stream',  name: 'MonkeyBoyz Stream', desc: '+120 bobbles per second',base: 18000, sec: 120 },
     ];
     let S = LS.get('mb_clicker', { n: 0, total: 0, own: {} });
-    let el = {}, stopAt = 0, saveT = 0, tick = 0;
+    let el = {}, stopAt = 0, saveT = 0, lastT = 0;
     const own = id => S.own[id] || 0;
     const cost = u => Math.ceil(u.base * Math.pow(1.15, own(u.id)));
     const perClick = () => 1 + UPGRADES.reduce((a, u) => a + (u.click || 0) * own(u.id), 0);
@@ -169,8 +169,9 @@
     function loop() {
       const now = performance.now();
       if (!el.video.paused && now > stopAt) el.video.pause();
-      tick++;
-      if (tick % 10 === 0) { const g = perSec() / 10; if (g) { S.n += g; S.total += g; render(); } }
+      // earn by real time passed, so the rate is right even when the browser slows the timer down
+      const dt = Math.min(60, (now - (lastT || now)) / 1000); lastT = now;
+      const g = perSec() * dt; if (g) { S.n += g; S.total += g; render(); }
       if (now - saveT > 4000) { save(); saveT = now; }
     }
     let timer = 0;
@@ -205,7 +206,7 @@
       el.head.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); bobble(); } });
       render();
     }
-    function start() { if (!timer) timer = setInterval(loop, 100); }
+    function start() { if (!timer) { lastT = performance.now(); timer = setInterval(loop, 100); } }
     function stop() { clearInterval(timer); timer = 0; save(); try { el.video && el.video.pause(); } catch (e) {} }
     return { init, start, stop };
   })();
