@@ -182,6 +182,50 @@
   .cards-views button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:980px;font:inherit;font-size:15px;padding:8px 18px;cursor:pointer}
   .cards-views button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
   .battle{text-align:center;padding:10px 0 30px}
+  .bt-modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;max-width:760px;margin:10px auto}
+  .bt-mode{background:var(--tile);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:10px;align-items:center}
+  .bt-mode h4{margin:0;font-size:19px}
+  .bt-mode p{margin:0;color:var(--ink2);font-size:14px;line-height:1.45}
+  .newtag{background:#ff3b30;color:#fff;font-size:11px;border-radius:8px;padding:2px 7px;vertical-align:middle}
+  /* ---- full battle ---- */
+  .fb{max-width:760px;margin:0 auto}
+  .fb-field{position:relative;border-radius:24px;padding:16px;background:linear-gradient(180deg,#bde0fe 0%,#dff3e4 55%,#9bd08b 56%,#7bbf6a 100%);min-height:430px;overflow:hidden}
+  body.dark .fb-field,html[data-theme=dark] .fb-field{background:linear-gradient(180deg,#1b2a4a 0%,#25385a 55%,#2f5a2a 56%,#244a20 100%)}
+  .fb-side{position:absolute;display:flex;gap:12px;align-items:flex-end}
+  .fb-side.opp{top:16px;right:16px;flex-direction:row-reverse;align-items:flex-start}
+  .fb-side.me{bottom:16px;left:16px}
+  .fb-hud{background:rgba(255,255,255,.92);color:#111;border-radius:14px;padding:8px 12px;min-width:170px;box-shadow:0 4px 14px rgba(0,0,0,.15);text-align:left}
+  .fb-hud b{font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+  .fb-hud .ty{font-size:12px;color:#555}
+  .fb-hp{height:9px;border-radius:9px;background:#dee2e6;overflow:hidden;margin:6px 0 3px}
+  .fb-hp i{display:block;height:100%;width:100%;background:#2ea043;transition:width .5s ease, background .3s}
+  .fb-hp i.mid{background:#f0b232} .fb-hp i.low{background:#e5484d}
+  .fb-hud small{font-size:11px;color:#555}
+  .fb-hud .fx{font-size:11px;color:#a371f7;font-weight:700}
+  .fb-card{transition:transform .25s ease, filter .25s}
+  .fb-card.lunge-r{transform:translate(40px,-30px) scale(1.05)}
+  .fb-card.lunge-l{transform:translate(-40px,30px) scale(1.05)}
+  .fb-card.hit{animation:fbShake .45s ease}
+  .fb-card.faint{transform:translateY(40px) scale(.7);filter:grayscale(1);opacity:.3}
+  .fb-card.enter{animation:fbIn .4s ease}
+  @keyframes fbShake{0%,100%{transform:none;filter:none}20%{transform:translateX(-10px);filter:brightness(1.8) sepia(1) hue-rotate(-40deg) saturate(5)}40%{transform:translateX(10px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+  @keyframes fbIn{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
+  .fb-bench{display:flex;gap:6px;margin-top:6px}
+  .fb-bench i{width:12px;height:12px;border-radius:50%;background:#2ea043;box-shadow:0 0 0 2px #fff} .fb-bench i.out{background:#adb5bd}
+  .fb-log{background:#111;color:#fff;border-radius:16px;padding:14px 16px;margin:12px 0;min-height:52px;font-size:16px;line-height:1.4;text-align:left;border:3px solid #ffd43b}
+  .fb-moves{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .fb-move{border:0;border-radius:16px;padding:12px 14px;text-align:left;cursor:pointer;font:inherit;color:#fff;display:flex;flex-direction:column;gap:2px;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+  .fb-move b{font-size:16px} .fb-move span{font-size:12px;opacity:.9}
+  .fb-move:disabled{opacity:.45;cursor:default}
+  .fb-move.sw{background:#495057}
+  .fb-team{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:12px 0}
+  .fb-team .tc{cursor:pointer}
+  .fb-team .tc.pick{transform:translateY(-8px);box-shadow:0 0 0 4px #2f81f7,0 10px 24px rgba(0,0,0,.25)}
+  .fb-team .tc.out{opacity:.3;filter:grayscale(1);cursor:default}
+  .tybadge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);color:#fff;border-radius:999px;font-size:12px;font-weight:800;padding:3px 10px;z-index:3;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+  .fb-team{gap:16px;padding-top:12px}
+  .fb-chart{font-size:13px;color:var(--ink2);margin-top:12px;line-height:1.6}
+  @media (max-width:600px){ .fb-field{min-height:380px;padding:10px} .fb-side.opp{top:10px;right:10px} .fb-side.me{bottom:10px;left:10px} .fb-hud{min-width:120px;padding:6px 9px} .fb-hud b{font-size:12px;max-width:120px} .fb-moves{grid-template-columns:1fr 1fr} .fb-move b{font-size:14px} }
   .bt-score{font-size:20px;font-weight:700;margin:8px 0 14px}
   .bt-table{display:flex;gap:22px;justify-content:center;align-items:center;flex-wrap:wrap;perspective:1000px}
   .bt-side h5{margin:0 0 8px;font-size:13px;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em}
@@ -565,13 +609,19 @@
     intro() {
       const n = owned().filter(id => !id.startsWith('secret:')).length;
       this.el().innerHTML = `<div class="bt-score">⚔️ Card Battle</div>
-        <p class="bt-msg">You get 5 of your cards, the computer gets 5. Each round, pick one of your cards and one of its stats.
-        Higher number wins the round. Win the best of 5 to earn a <b>🍀 Lucky Pack</b>.</p>
-        ${n < 5 ? `<p class="bt-msg" style="color:var(--ink2);font-size:14px">You only have ${n} card${n === 1 ? '' : 's'}, so you'll borrow some Commons (marked LOAN).</p>` : ''}
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-          <button class="cards-btn bt-start">🤖 Vs computer</button><button class="cards-btn bt-pvp" style="background:#5865f2;color:#fff">🌐 Vs a friend (online)</button></div>`;
+        <div class="bt-modes">
+          <div class="bt-mode"><h4>🐉 Full Battle <span class="newtag">NEW</span></h4>
+            <p>Pokémon style. Pick 3 cards, each with HP, 2 moves and a type. Take turns attacking and switching until one side is knocked out.</p>
+            <button class="cards-btn fb-start">🤖 Vs computer</button></div>
+          <div class="bt-mode"><h4>⚡ Quick Battle</h4>
+            <p>5 rounds. Pick a card and a stat each round, higher number wins. About a minute.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button class="cards-btn bt-start">🤖 Vs computer</button><button class="cards-btn bt-pvp" style="background:#5865f2;color:#fff">🌐 Vs a friend</button></div></div>
+        </div>
+        <p class="bt-msg">Win either one for a <b>🍀 Lucky Pack</b>.</p>
+        ${n < 6 ? `<p class="bt-msg" style="color:var(--ink2);font-size:14px">You have ${n} card${n === 1 ? '' : 's'}, so you'll borrow some Commons (marked LOAN) if you need them.</p>` : ''}`;
       this.el().querySelector('.bt-start').onclick = () => { PvP.close(); this.start(); };
       this.el().querySelector('.bt-pvp').onclick = () => PvP.lobby();
+      this.el().querySelector('.fb-start').onclick = () => { PvP.close(); Full.pick(); };
     },
     deal() {
       const ms = members(), pool = owned().filter(id => !id.startsWith('secret:')).map(cardById).filter(Boolean);
@@ -813,6 +863,219 @@
         }
         act.appendChild(btn);
       }, 450);
+    }
+  };
+
+  /* ---- Full Battle (Pokémon style) ---- */
+  // Each card's background theme is its type. Every type beats 2 and loses to 2.
+  const TYPES = {
+    Fire:   { e: '🔥', c: '#e8590c', beats: ['Jungle', 'Ice'] },
+    Water:  { e: '💧', c: '#1c7ed6', beats: ['Fire', 'Cosmic'] },
+    Jungle: { e: '🌿', c: '#2f9e44', beats: ['Water', 'Neon'] },
+    Ice:    { e: '❄️', c: '#3bc9db', beats: ['Jungle', 'Cosmic'] },
+    Neon:   { e: '⚡', c: '#ae3ec9', beats: ['Water', 'Ice'] },
+    Cosmic: { e: '🌌', c: '#5f3dc4', beats: ['Fire', 'Neon'] },
+  };
+  const THEME_TYPE = { Jungle: 'Jungle', Banana: 'Jungle', Toxic: 'Jungle', Sakura: 'Jungle', Lava: 'Fire', Sunset: 'Fire', Desert: 'Fire', 'Gold Rush': 'Fire',
+    Ocean: 'Water', Storm: 'Water', Midnight: 'Water', Ice: 'Ice', Cloud: 'Ice', Neon: 'Neon', Candy: 'Neon', Retro: 'Neon', Matrix: 'Neon',
+    Space: 'Cosmic', Void: 'Cosmic', Rainbow: 'Cosmic' };
+  const typeOf = c => c.token ? 'Cosmic' : THEME_TYPE[c.theme ? c.theme[0] : ''] || 'Jungle';
+  const eff = (atk, def) => TYPES[atk].beats.includes(def) ? 1.6 : TYPES[def].beats.includes(atk) ? .6 : 1;
+  // second move comes from the card's best stat
+  const SPECIALS = {
+    Rizz:          { name: 'Rizz Up',      d: 'Next hit does 1.8× damage' },
+    Rage:          { name: 'Tilt',         d: 'Big hit, but hurts you a bit' },
+    Aura:          { name: 'Aura Shield',  d: 'Halves the next hit, heals a little' },
+    Yapping:       { name: 'Yap Barrage',  d: '3 quick hits, each can miss' },
+    'Brain Cells': { name: 'Big Brain',    d: 'Ignores types, may stun' },
+    Luck:          { name: 'Lucky Shot',   d: '50%: double damage, or a dud' },
+    Skill:         { name: 'Quick Combo',  d: 'Always goes first' },
+    Clutch:        { name: 'Clutch Heal',  d: 'Heals 35% HP' },
+  };
+  function fighter(c) {
+    const a = allStats(c), lvl = c.token ? 6 : c.lvl, power = c.token ? 180 : c.power;
+    const best = Object.keys(a).sort((x, y) => a[y] - a[x])[0];
+    const hp = Math.round(90 + power * 1.1);
+    return { c, name: c.token ? 'Pirate Token' : c.member.name, title: c.token ? 'Pirate Token' : c.title, type: typeOf(c), hp, max: hp,
+      atk: 30 + Math.round((c.token ? 160 : c.dmg) * .28) + lvl * 3, spd: (a.Skill + a.Clutch) / 2 + Math.random() * 6,
+      sig: { name: c.token ? 'X Marks the Spot' : c.move }, sp: Object.assign({ key: best }, SPECIALS[best]),
+      boost: 1, shield: false, stun: false };
+  }
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const Full = {
+    E(s) { return Battle.el().querySelector(s); },
+    pick() {
+      Battle.on = true;
+      const pool = Battle.deal().concat(Battle.deal()).filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i).slice(0, 6);
+      this.choices = pool; this.chosen = [];
+      Battle.el().innerHTML = `<div class="bt-score">🐉 Pick your team of 3</div>
+        <p class="bt-msg">Tap 3 cards. The first one you pick goes out first. Types matter: 🔥 beats 🌿❄️ · 💧 beats 🔥🌌 · 🌿 beats 💧⚡ · ❄️ beats 🌿🌌 · ⚡ beats 💧❄️ · 🌌 beats 🔥⚡</p>
+        <div class="fb-team"></div><button class="cards-btn fb-go" disabled>Battle!</button> <button class="cards-btn ghost fb-back">← Back</button>`;
+      const team = this.E('.fb-team');
+      pool.forEach((c, i) => {
+        const el = cardEl(c, window.innerWidth < 600 ? 104 : 132);
+        const t = document.createElement('span'); t.className = 'tybadge'; t.style.background = TYPES[typeOf(c)].c; t.textContent = TYPES[typeOf(c)].e + ' ' + typeOf(c) + (c.loan ? ' · LOAN' : ''); el.appendChild(t);
+        el.onclick = () => {
+          const k = this.chosen.indexOf(i);
+          if (k >= 0) this.chosen.splice(k, 1); else if (this.chosen.length < 3) this.chosen.push(i);
+          team.querySelectorAll('.tc').forEach((x, j) => x.classList.toggle('pick', this.chosen.includes(j)));
+          this.E('.fb-go').disabled = this.chosen.length !== 3;
+          this.E('.fb-go').textContent = this.chosen.length === 3 ? 'Battle!' : `Pick ${3 - this.chosen.length} more`;
+        };
+        team.appendChild(el);
+      });
+      this.E('.fb-go').textContent = 'Pick 3 cards';
+      this.E('.fb-go').onclick = () => this.start(this.chosen.map(i => pool[i]));
+      this.E('.fb-back').onclick = () => { Battle.on = false; Battle.intro(); };
+    },
+    start(cards) {
+      const ms = members();
+      this.me = cards.map(fighter);
+      // the computer gets cards around the same rarity, with a random mix of types
+      this.cpu = cards.map(c => { const lvl = Math.max(0, Math.min(5, (c.token ? 5 : c.lvl) + Math.floor(Math.random() * 3) - 1)), rar = RAR[lvl];
+        return fighter(makeCard(ms[Math.floor(Math.random() * ms.length)], rar.from + Math.floor(Math.random() * (rar.to - rar.from + 1)))); });
+      this.mi = 0; this.ci = 0; this.busy = false; this.over = false;
+      Battle.el().innerHTML = `<div class="fb">
+        <div class="fb-field">
+          <div class="fb-side opp"><div class="fb-slot o"></div><div class="fb-hud o"></div></div>
+          <div class="fb-side me"><div class="fb-slot m"></div><div class="fb-hud m"></div></div>
+        </div>
+        <div class="fb-log"></div><div class="fb-moves"></div></div>`;
+      this.place('m', true); this.place('o', true);
+      this.say(`The computer sends out ${this.cpu[0].name}! Go, ${this.me[0].name}!`).then(() => this.menu());
+    },
+    cardW(side) { const small = window.innerWidth < 600; return side === 'o' ? (small ? 96 : 130) : (small ? 112 : 150); },
+    place(side, enter) {
+      const f = side === 'm' ? this.me[this.mi] : this.cpu[this.ci];
+      const slot = this.E('.fb-slot.' + side); slot.innerHTML = '';
+      const el = cardEl(f.c, this.cardW(side)); el.classList.add('fb-card'); if (enter) el.classList.add('enter'); slot.appendChild(el);
+      this.hud(side);
+    },
+    hud(side) {
+      const team = side === 'm' ? this.me : this.cpu, f = team[side === 'm' ? this.mi : this.ci], pct = Math.max(0, f.hp / f.max * 100);
+      const fx = [f.boost > 1 ? '💘 charged' : '', f.shield ? '🛡 shielded' : '', f.stun ? '💫 stunned' : ''].filter(Boolean).join(' · ');
+      this.E('.fb-hud.' + side).innerHTML = `<b>${esc(f.title)}</b><span class="ty">${TYPES[f.type].e} ${f.type}</span>
+        <div class="fb-hp"><i class="${pct < 25 ? 'low' : pct < 55 ? 'mid' : ''}" style="width:${pct}%"></i></div>
+        <small>${Math.max(0, Math.ceil(f.hp))} / ${f.max} HP</small>${fx ? `<div class="fx">${fx}</div>` : ''}
+        <div class="fb-bench">${team.map(x => `<i class="${x.hp <= 0 ? 'out' : ''}"></i>`).join('')}</div>`;
+    },
+    async say(t, ms) { const l = this.E('.fb-log'); if (l) l.innerHTML = t; await wait(ms || 1100); },
+    menu() {
+      if (this.over) return;
+      const f = this.me[this.mi], box = this.E('.fb-moves'); box.innerHTML = '';
+      this.E('.fb-log').innerHTML = `What will <b>${esc(f.name)}</b> do?`;
+      const mk = (label, sub, color, fn, cls) => { const b = document.createElement('button'); b.className = 'fb-move ' + (cls || ''); b.style.background = color;
+        b.innerHTML = `<b>${esc(label)}</b><span>${esc(sub)}</span>`; b.onclick = () => { if (!this.busy) fn(); }; box.appendChild(b); return b; };
+      mk(f.sig.name, `${TYPES[f.type].e} ${f.type} attack · ${f.atk} power`, TYPES[f.type].c, () => this.turn({ kind: 'sig' }));
+      mk(f.sp.name, f.sp.d, '#343a40', () => this.turn({ kind: 'sp' }));
+      const bench = this.me.map((x, i) => ({ x, i })).filter(o => o.i !== this.mi && o.x.hp > 0);
+      const sw = mk('Switch', bench.length ? 'Swap in another card (uses your turn)' : 'No one left to switch to', '#495057', () => this.switchMenu(), 'sw');
+      sw.disabled = !bench.length;
+    },
+    switchMenu(forced) {
+      const box = this.E('.fb-moves'); box.innerHTML = '';
+      this.E('.fb-log').innerHTML = forced ? 'Who goes out next?' : 'Switch to who?';
+      this.me.forEach((x, i) => {
+        if (i === this.mi || x.hp <= 0) return;
+        const b = document.createElement('button'); b.className = 'fb-move'; b.style.background = TYPES[x.type].c;
+        b.innerHTML = `<b>${esc(x.name)}</b><span>${TYPES[x.type].e} ${x.type} · ${Math.ceil(x.hp)}/${x.max} HP</span>`;
+        b.onclick = () => { if (this.busy) return; if (forced) this.sendNext(i); else this.turn({ kind: 'switch', to: i }); };
+        box.appendChild(b);
+      });
+      if (!forced) { const b = document.createElement('button'); b.className = 'fb-move sw'; b.innerHTML = '<b>← Back</b><span>Pick a move instead</span>'; b.onclick = () => this.menu(); box.appendChild(b); }
+    },
+    cpuChoice() {
+      const f = this.cpu[this.ci], foe = this.me[this.mi];
+      if (f.sp.key === 'Clutch' && f.hp / f.max < .4 && Math.random() < .8) return { kind: 'sp' };
+      if (f.sp.key === 'Rizz' && f.boost === 1 && f.hp / f.max > .6 && Math.random() < .5) return { kind: 'sp' };
+      if (f.sp.key === 'Aura' && !f.shield && Math.random() < .25) return { kind: 'sp' };
+      if (['Rage', 'Yapping', 'Luck', 'Skill', 'Brain Cells'].includes(f.sp.key) && (eff(f.type, foe.type) < 1 || Math.random() < .35)) return { kind: 'sp' };
+      return { kind: 'sig' };
+    },
+    async turn(mine) {
+      this.busy = true; this.E('.fb-moves').innerHTML = '';
+      const theirs = this.cpuChoice(), me = this.me[this.mi], cp = this.cpu[this.ci];
+      if (mine.kind === 'switch') { await this.doSwitch(mine.to); await this.act('o', theirs); }
+      else {
+        const pri = x => x.kind === 'sp' && x.f.sp.key === 'Skill' ? 1 : 0;
+        const a = { side: 'm', m: mine, f: me }, b = { side: 'o', m: theirs, f: cp };
+        a.f = me; b.f = cp; a.kind = mine.kind; b.kind = theirs.kind;
+        const order = pri(a) !== pri(b) ? (pri(a) > pri(b) ? [a, b] : [b, a]) : (me.spd >= cp.spd ? [a, b] : [b, a]);
+        for (const o of order) { if (this.over) break; const f = o.side === 'm' ? this.me[this.mi] : this.cpu[this.ci]; if (f !== o.f || f.hp <= 0) continue; await this.act(o.side, o.m); }
+      }
+      this.busy = false;
+      if (!this.over) {
+        if (this.me[this.mi].hp <= 0) this.switchMenu(true); else this.menu();
+      }
+    },
+    async doSwitch(i) {
+      await this.say(`${esc(this.me[this.mi].name)}, come back!`, 700);
+      this.mi = i; this.place('m', true); await this.say(`Go, <b>${esc(this.me[i].name)}</b>!`, 900);
+    },
+    async sendNext(i) { this.busy = true; this.mi = i; this.place('m', true); await this.say(`Go, <b>${esc(this.me[i].name)}</b>!`, 900); this.busy = false; this.menu(); },
+    dmg(att, def, mult, ignoreType) {
+      const e = ignoreType ? 1 : eff(att.type, def.type);
+      let d = att.atk * mult * e * att.boost * (.85 + Math.random() * .15);
+      att.boost = 1;
+      if (def.shield) { d *= .5; def.shield = false; }
+      return { d: Math.max(1, Math.round(d)), e };
+    },
+    async hit(side, d, e) {
+      const tSide = side === 'm' ? 'o' : 'm', t = tSide === 'm' ? this.me[this.mi] : this.cpu[this.ci];
+      t.hp = Math.max(0, t.hp - d);
+      const el = this.E('.fb-slot.' + tSide + ' .fb-card'); if (el) { el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); }
+      beep(e > 1 ? [300, 200, 150] : [220, 160], .06, 'sawtooth');
+      this.hud(tSide); await wait(500);
+      if (e > 1) await this.say('It\'s super effective! 🔥', 800);
+      else if (e < 1) await this.say('It\'s not very effective…', 800);
+    },
+    async act(side, m) {
+      const me = side === 'm', f = me ? this.me[this.mi] : this.cpu[this.ci], foe = me ? this.cpu[this.ci] : this.me[this.mi];
+      const who = (me ? '' : 'The computer\'s ') + '<b>' + esc(f.name) + '</b>';
+      if (f.stun) { f.stun = false; this.hud(side); await this.say(`${who} is stunned and can't move! 💫`); return; }
+      const el = this.E('.fb-slot.' + side + ' .fb-card');
+      const lunge = async () => { if (el) { el.classList.add(me ? 'lunge-r' : 'lunge-l'); await wait(220); el.classList.remove('lunge-r', 'lunge-l'); } };
+      if (m.kind === 'sig') {
+        await this.say(`${who} used <b>${esc(f.sig.name)}</b>!`, 650);
+        if (Math.random() < .07) { await this.say('But it missed!'); return; }
+        await lunge(); const r = this.dmg(f, foe, 1); await this.hit(side, r.d, r.e);
+      } else {
+        const k = f.sp.key; await this.say(`${who} used <b>${esc(f.sp.name)}</b>!`, 650);
+        if (k === 'Rizz') { f.boost = 1.8; beep([660, 880], .07, 'triangle'); this.hud(side); await this.say(`${esc(f.name)} is feeling himself. Next hit is charged! 💘`); }
+        else if (k === 'Aura') { f.shield = true; f.hp = Math.min(f.max, f.hp + f.max * .1); beep([523, 784], .07, 'triangle'); this.hud(side); await this.say(`${esc(f.name)} is surrounded by aura. 🛡`); }
+        else if (k === 'Clutch') { f.hp = Math.min(f.max, f.hp + f.max * .35); beep([523, 659, 784], .07, 'triangle'); this.hud(side); await this.say(`${esc(f.name)} clutched up and healed! 💚`); }
+        else if (k === 'Rage') { await lunge(); const r = this.dmg(f, foe, 1.45); await this.hit(side, r.d, r.e); f.hp = Math.max(0, f.hp - Math.round(r.d * .2)); this.hud(side); await this.say(`${esc(f.name)} hurt himself in the rage! 😤`, 900); }
+        else if (k === 'Yapping') { let n = 0; for (let i = 0; i < 3; i++) { if (Math.random() < .75) { n++; await lunge(); const r = this.dmg(f, foe, .42); f.boost = 1; await this.hit(side, r.d, i === 2 ? r.e : 1); } } await this.say(n ? `Hit ${n} time${n > 1 ? 's' : ''}!` : 'All the yapping missed!'); }
+        else if (k === 'Brain Cells') { await lunge(); const r = this.dmg(f, foe, 1.05, true); await this.hit(side, r.d, 1); if (Math.random() < .3 && foe.hp > 0) { foe.stun = true; this.hud(me ? 'o' : 'm'); await this.say(`${esc(foe.name)} is confused and stunned! 💫`); } }
+        else if (k === 'Luck') { await lunge(); if (Math.random() < .5) { await this.say('🍀 Lucky!', 600); const r = this.dmg(f, foe, 2); await this.hit(side, r.d, r.e); } else { const r = this.dmg(f, foe, .3); await this.hit(side, r.d, 1); await this.say('…it was a dud. 🥲'); } }
+        else if (k === 'Skill') { await lunge(); const r = this.dmg(f, foe, .8); await this.hit(side, r.d, r.e); }
+      }
+      await this.faints();
+    },
+    async faints() {
+      const cp = this.cpu[this.ci], me = this.me[this.mi];
+      if (cp.hp <= 0) {
+        const el = this.E('.fb-slot.o .fb-card'); if (el) el.classList.add('faint');
+        await this.say(`The computer's <b>${esc(cp.name)}</b> fainted! 💀`);
+        const next = this.cpu.findIndex(x => x.hp > 0);
+        if (next < 0) return this.end(true);
+        this.ci = next; this.place('o', true); await this.say(`The computer sends out <b>${esc(this.cpu[next].name)}</b>!`);
+      }
+      if (me.hp <= 0 && !this.over) {
+        const el = this.E('.fb-slot.m .fb-card'); if (el) el.classList.add('faint');
+        await this.say(`<b>${esc(me.name)}</b> fainted! 💀`);
+        if (!this.me.some(x => x.hp > 0)) return this.end(false);
+      }
+    },
+    async end(won) {
+      this.over = true; this.E('.fb-moves').innerHTML = '';
+      if (won) { beep([523, 659, 784, 1047, 1319], .1); await this.say('🏆 <b>You won the battle!</b> +1 🍀 Lucky Pack', 400);
+        window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'winning a Full Battle', lucky: true } })); }
+      else { beep([392, 330, 262], .15); await this.say('💀 <b>All your cards fainted.</b> The computer wins this one.', 400); }
+      const box = this.E('.fb-moves');
+      const a = document.createElement('button'); a.className = 'fb-move'; a.style.background = '#2f9e44'; a.innerHTML = '<b>Play again</b><span>Pick a new team</span>'; a.onclick = () => this.pick();
+      const b = document.createElement('button'); b.className = 'fb-move sw'; b.innerHTML = '<b>Back</b><span>Other battle modes</span>'; b.onclick = () => { Battle.on = false; Battle.intro(); };
+      box.append(a, b);
     }
   };
 
