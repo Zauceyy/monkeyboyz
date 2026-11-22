@@ -222,6 +222,13 @@
   .fb-team .tc{cursor:pointer}
   .fb-team .tc.pick{transform:translateY(-8px);box-shadow:0 0 0 4px #2f81f7,0 10px 24px rgba(0,0,0,.25)}
   .fb-team .tc.out{opacity:.3;filter:grayscale(1);cursor:default}
+  .fb-audio{position:absolute;top:10px;left:10px;display:flex;gap:6px;z-index:3}
+  .fb-audio button{width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.85);cursor:pointer;font-size:16px}
+  .fb-move em{font-style:normal;font-size:11px;opacity:.85;align-self:flex-end;margin-top:-16px}
+  .fb-extra{display:flex;justify-content:center;margin-top:10px;min-height:10px}
+  .fb-part{position:absolute;z-index:4;font-size:22px;pointer-events:none;transform:translate(-50%,-50%);animation:fbPart .75s ease-out forwards}
+  @keyframes fbPart{0%{opacity:1;transform:translate(-50%,-50%) scale(.6)}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.3)}}
+  .fb-side.opp{top:56px}
   .tybadge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);color:#fff;border-radius:999px;font-size:12px;font-weight:800;padding:3px 10px;z-index:3;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25)}
   .fb-team{gap:16px;padding-top:12px}
   .fb-chart{font-size:13px;color:var(--ink2);margin-top:12px;line-height:1.6}
@@ -582,6 +589,7 @@
     const setView = v => {
       root.querySelector('.v-col').classList.toggle('on', v === 'col'); root.querySelector('.v-bt').classList.toggle('on', v === 'bt');
       root.querySelector('.cards-main').hidden = v !== 'col'; root.querySelector('.battle').hidden = v !== 'bt';
+      if (v !== 'bt') FX.stopMusic();
       if (v === 'bt' && !Battle.on) Battle.intro();
     };
     root.querySelector('.v-col').onclick = () => setView('col');
@@ -593,7 +601,7 @@
     if (root) render();
     Feed.load(); clearInterval(Feed.poll); Feed.poll = setInterval(() => Feed.load(), 20000);
   }
-  function hide() { clearInterval(timerT); timerT = 0; clearInterval(Feed.poll); Feed.poll = 0; }
+  function hide() { clearInterval(timerT); timerT = 0; clearInterval(Feed.poll); Feed.poll = 0; FX.stopMusic(); }
 
   /* ------------------------------ Card Battle ------------------------------ */
   // Every card secretly has all 8 stats (the 3 printed ones are the real values), so any stat can be compared.
@@ -881,31 +889,114 @@
     Space: 'Cosmic', Void: 'Cosmic', Rainbow: 'Cosmic' };
   const typeOf = c => c.token ? 'Cosmic' : THEME_TYPE[c.theme ? c.theme[0] : ''] || 'Jungle';
   const eff = (atk, def) => TYPES[atk].beats.includes(def) ? 1.6 : TYPES[def].beats.includes(atk) ? .6 : 1;
-  // second move comes from the card's best stat
+  // ---- moves: every card gets 4, Pokémon style (with PP) ----
+  // 1) its printed move  2) a move from its type  3) a special from its best stat  4) a special from its 2nd best stat
+  const TYPE_MOVES = {
+    Fire:   [{ name: 'Banana Flamethrower', pow: 1.25, acc: .85 }, { name: 'Ember Rant', pow: 1.0, acc: 1 }],
+    Water:  [{ name: 'Hydro Yap', pow: 1.25, acc: .85 }, { name: 'Spit Take', pow: 1.0, acc: 1 }],
+    Jungle: [{ name: 'Vine Slap', pow: 1.25, acc: .85 }, { name: 'Banana Peel', pow: 1.0, acc: 1 }],
+    Ice:    [{ name: 'Brain Freeze', pow: 1.25, acc: .85 }, { name: 'Cold Shoulder', pow: 1.0, acc: 1 }],
+    Neon:   [{ name: 'Thunder Spam', pow: 1.25, acc: .85 }, { name: 'RGB Flash', pow: 1.0, acc: 1 }],
+    Cosmic: [{ name: 'Void Pulse', pow: 1.25, acc: .85 }, { name: 'Star Toss', pow: 1.0, acc: 1 }],
+  };
   const SPECIALS = {
-    Rizz:          { name: 'Rizz Up',      d: 'Next hit does 1.8× damage' },
-    Rage:          { name: 'Tilt',         d: 'Big hit, but hurts you a bit' },
-    Aura:          { name: 'Aura Shield',  d: 'Halves the next hit, heals a little' },
-    Yapping:       { name: 'Yap Barrage',  d: '3 quick hits, each can miss' },
+    Rizz:          { name: 'Rizz Up',      d: 'Next hit does 1.8×', status: true },
+    Rage:          { name: 'Tilt',         d: 'Huge hit, some recoil' },
+    Aura:          { name: 'Aura Shield',  d: 'Halve next hit, small heal', status: true },
+    Yapping:       { name: 'Yap Barrage',  d: '3 quick hits, can miss' },
     'Brain Cells': { name: 'Big Brain',    d: 'Ignores types, may stun' },
-    Luck:          { name: 'Lucky Shot',   d: '50%: double damage, or a dud' },
+    Luck:          { name: 'Lucky Shot',   d: '50/50: double or a dud' },
     Skill:         { name: 'Quick Combo',  d: 'Always goes first' },
-    Clutch:        { name: 'Clutch Heal',  d: 'Heals 35% HP' },
+    Clutch:        { name: 'Clutch Heal',  d: 'Heal 35% HP', status: true },
   };
   function fighter(c) {
-    const a = allStats(c), lvl = c.token ? 6 : c.lvl, power = c.token ? 180 : c.power;
-    const best = Object.keys(a).sort((x, y) => a[y] - a[x])[0];
-    const hp = Math.round(90 + power * 1.1);
-    return { c, name: c.token ? 'Pirate Token' : c.member.name, title: c.token ? 'Pirate Token' : c.title, type: typeOf(c), hp, max: hp,
+    const a = allStats(c), lvl = c.token ? 6 : c.lvl, power = c.token ? 180 : c.power, type = typeOf(c);
+    const ranked = Object.keys(a).sort((x, y) => a[y] - a[x]);
+    const hp = Math.round(100 + power * 1.15);
+    const r = rng(hash(c.id + '#moves'));
+    const tm = TYPE_MOVES[type][r() < .5 ? 0 : 1];
+    const moves = [
+      { kind: 'sig', name: c.token ? 'X Marks the Spot' : c.move, type, pow: 1, acc: .95, pp: 15, d: `${TYPES[type].e} ${type} · reliable` },
+      { kind: 'type', name: tm.name, type, pow: tm.pow, acc: tm.acc, pp: tm.pow > 1 ? 5 : 10, d: `${TYPES[type].e} ${type} · ${tm.pow > 1 ? 'strong, can miss' : 'never misses'}` },
+      Object.assign({ kind: 'sp', key: ranked[0], pp: 5 }, SPECIALS[ranked[0]]),
+      Object.assign({ kind: 'sp', key: ranked[1], pp: 5 }, SPECIALS[ranked[1]]),
+    ].map(m => Object.assign(m, { max: m.pp }));
+    return { c, name: c.token ? 'Pirate Token' : c.member.name, title: c.token ? 'Pirate Token' : c.title, type, hp, max: hp,
       atk: 30 + Math.round((c.token ? 160 : c.dmg) * .28) + lvl * 3, spd: (a.Skill + a.Clutch) / 2 + Math.random() * 6,
-      sig: { name: c.token ? 'X Marks the Spot' : c.move }, sp: Object.assign({ key: best }, SPECIALS[best]),
-      boost: 1, shield: false, stun: false };
+      moves, boost: 1, shield: false, stun: false };
   }
   const wait = ms => new Promise(r => setTimeout(r, ms));
+
+  /* ---- battle music + Pokémon-ish sound effects ---- */
+  const FX = {
+    ctx: null, music: null, musicOn: LS.get('mb_battle_music', true), sfxOn: LS.get('mb_battle_sfx', true),
+    ac() { try { this.ctx = this.ctx || new (window.AudioContext || window.webkitAudioContext)(); if (this.ctx.state === 'suspended') this.ctx.resume(); } catch (e) {} return this.ctx; },
+    startMusic() {
+      if (!this.musicOn) return;
+      if (!this.music) { this.music = new Audio('games/audio/battle.mp3'); this.music.loop = true; this.music.volume = .45; this.music.preload = 'auto'; }
+      try { this.music.currentTime = 0; this.music.play().catch(() => {}); } catch (e) {}
+    },
+    stopMusic() { try { this.music && this.music.pause(); } catch (e) {} },
+    fadeMusic() { const m = this.music; if (!m) return; let v = m.volume; const t = setInterval(() => { v -= .05; if (v <= 0) { clearInterval(t); m.pause(); m.volume = .45; } else m.volume = v; }, 60); },
+    tone(f, t0, dur, type, vol, slideTo) {
+      const c = this.ac(); if (!c) return; const o = c.createOscillator(), g = c.createGain(), t = c.currentTime + t0;
+      o.type = type; o.frequency.setValueAtTime(f, t); if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + .02);
+    },
+    noise(t0, dur, vol, freq, q) {
+      const c = this.ac(); if (!c) return; const n = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+      const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(), t = c.currentTime + t0;
+      s.buffer = buf; f.type = 'bandpass'; f.frequency.value = freq || 1200; f.Q.value = q || .8; g.gain.value = vol;
+      s.connect(f); f.connect(g); g.connect(c.destination); s.start(t);
+    },
+    play(name, arg) {
+      if (!this.sfxOn) return;
+      const T = this;
+      ({
+        select() { T.tone(880, 0, .06, 'square', .06); },
+        hit() { T.noise(0, .18, .5, 900, .6); T.tone(140, 0, .15, 'square', .18, 60); },
+        bigHit() { T.noise(0, .3, .7, 600, .5); T.tone(220, 0, .3, 'sawtooth', .2, 40); T.noise(.08, .2, .4, 2400, 1); },
+        weak() { T.noise(0, .12, .3, 1800, 1.2); },
+        miss() { T.noise(0, .25, .25, 3000, .4); T.tone(600, 0, .25, 'sine', .05, 1400); },
+        whoosh() { T.noise(0, .22, .25, 2600, .5); },
+        // each type gets its own "attack" sound
+        Fire() { T.noise(0, .45, .45, 500, .4); T.tone(300, 0, .45, 'sawtooth', .07, 90); },
+        Water() { [0, .07, .14, .21].forEach((t, i) => T.tone(500 - i * 60, t, .12, 'sine', .12, 200)); T.noise(0, .3, .2, 1500, .7); },
+        Jungle() { T.noise(0, .08, .4, 2000, 2); T.noise(.1, .08, .4, 1600, 2); T.tone(180, .02, .2, 'triangle', .15, 90); },
+        Ice() { [1760, 2093, 2637, 3136].forEach((f, i) => T.tone(f, i * .05, .25, 'triangle', .06)); T.noise(0, .3, .15, 5000, 2); },
+        Neon() { for (let i = 0; i < 6; i++) T.tone(200 + Math.random() * 1600, i * .04, .05, 'square', .08); T.noise(0, .3, .3, 3500, 3); },
+        Cosmic() { T.tone(200, 0, .6, 'sine', .15, 900); T.tone(203, 0, .6, 'sine', .1, 920); T.tone(1200, .25, .4, 'triangle', .05, 300); },
+        buff() { [523, 659, 784, 1047].forEach((f, i) => T.tone(f, i * .07, .18, 'square', .07)); },
+        heal() { [784, 988, 1175, 1568, 1976].forEach((f, i) => T.tone(f, i * .06, .3, 'triangle', .08)); },
+        shield() { T.tone(400, 0, .5, 'sine', .14, 800); T.tone(600, .05, .5, 'triangle', .06, 1200); },
+        stun() { [880, 660, 880, 660].forEach((f, i) => T.tone(f, i * .08, .08, 'square', .06)); },
+        super() { T.tone(523, 0, .1, 'square', .08); T.tone(784, .08, .2, 'square', .08); },
+        faint() { T.tone(600, 0, .8, 'square', .1, 60); T.noise(.2, .5, .25, 400, .5); },
+        sendOut() { T.tone(1200, 0, .05, 'square', .07); T.noise(.05, .12, .3, 3000, 1); T.tone(400, .1, .2, 'triangle', .12, 800); },
+        lowhp() { T.tone(988, 0, .08, 'square', .05); T.tone(988, .16, .08, 'square', .05); },
+        win() { [523, 523, 523, 659, 784, 659, 784, 1047].forEach((f, i) => T.tone(f, i * .12, .2, 'square', .09)); },
+        lose() { [392, 370, 349, 330, 262].forEach((f, i) => T.tone(f, i * .22, .3, 'triangle', .1)); },
+      })[name]?.(arg);
+    }
+  };
+  // little burst of emoji on the card that gets hit
+  function burst(el, emoji, n) {
+    if (!el) return; const r = el.getBoundingClientRect(), field = el.closest('.fb-field'); if (!field) return; const f = field.getBoundingClientRect();
+    for (let i = 0; i < (n || 8); i++) {
+      const s = document.createElement('span'); s.className = 'fb-part'; s.textContent = emoji;
+      s.style.left = (r.left - f.left + r.width / 2) + 'px'; s.style.top = (r.top - f.top + r.height / 2) + 'px';
+      const a = Math.random() * Math.PI * 2, d = 40 + Math.random() * 70;
+      s.style.setProperty('--dx', Math.cos(a) * d + 'px'); s.style.setProperty('--dy', Math.sin(a) * d + 'px');
+      field.appendChild(s); setTimeout(() => s.remove(), 750);
+    }
+  }
+
   const Full = {
     E(s) { return Battle.el().querySelector(s); },
     pick() {
-      Battle.on = true;
+      Battle.on = true; FX.stopMusic();
       const pool = Battle.deal().concat(Battle.deal()).filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i).slice(0, 6);
       this.choices = pool; this.chosen = [];
       Battle.el().innerHTML = `<div class="bt-score">🐉 Pick your team of 3</div>
@@ -918,6 +1009,7 @@
         el.onclick = () => {
           const k = this.chosen.indexOf(i);
           if (k >= 0) this.chosen.splice(k, 1); else if (this.chosen.length < 3) this.chosen.push(i);
+          FX.play('select');
           team.querySelectorAll('.tc').forEach((x, j) => x.classList.toggle('pick', this.chosen.includes(j)));
           this.E('.fb-go').disabled = this.chosen.length !== 3;
           this.E('.fb-go').textContent = this.chosen.length === 3 ? 'Battle!' : `Pick ${3 - this.chosen.length} more`;
@@ -931,18 +1023,25 @@
     start(cards) {
       const ms = members();
       this.me = cards.map(fighter);
-      // the computer gets cards around the same rarity, with a random mix of types
       this.cpu = cards.map(c => { const lvl = Math.max(0, Math.min(5, (c.token ? 5 : c.lvl) + Math.floor(Math.random() * 3) - 1)), rar = RAR[lvl];
         return fighter(makeCard(ms[Math.floor(Math.random() * ms.length)], rar.from + Math.floor(Math.random() * (rar.to - rar.from + 1)))); });
-      this.mi = 0; this.ci = 0; this.busy = false; this.over = false;
+      this.mi = 0; this.ci = 0; this.busy = false; this.over = false; this.warned = false;
       Battle.el().innerHTML = `<div class="fb">
         <div class="fb-field">
+          <div class="fb-audio"><button class="fb-mus" title="Music"></button><button class="fb-sfx" title="Sound effects"></button></div>
           <div class="fb-side opp"><div class="fb-slot o"></div><div class="fb-hud o"></div></div>
           <div class="fb-side me"><div class="fb-slot m"></div><div class="fb-hud m"></div></div>
         </div>
-        <div class="fb-log"></div><div class="fb-moves"></div></div>`;
-      this.place('m', true); this.place('o', true);
-      this.say(`The computer sends out ${this.cpu[0].name}! Go, ${this.me[0].name}!`).then(() => this.menu());
+        <div class="fb-log"></div><div class="fb-moves"></div><div class="fb-extra"></div></div>`;
+      const mb = this.E('.fb-mus'), sb = this.E('.fb-sfx');
+      const sync = () => { mb.textContent = FX.musicOn ? '🎵' : '🔇'; sb.textContent = FX.sfxOn ? '🔊' : '🔈'; };
+      mb.onclick = () => { FX.musicOn = !FX.musicOn; LS.set('mb_battle_music', FX.musicOn); FX.musicOn && !this.over ? FX.startMusic() : FX.stopMusic(); sync(); };
+      sb.onclick = () => { FX.sfxOn = !FX.sfxOn; LS.set('mb_battle_sfx', FX.sfxOn); sync(); };
+      sync(); FX.startMusic();
+      this.place('o', true); FX.play('sendOut');
+      this.say(`The computer wants to battle! It sends out <b>${esc(this.cpu[0].name)}</b>!`, 1300)
+        .then(() => { this.place('m', true); FX.play('sendOut'); return this.say(`Go, <b>${esc(this.me[0].name)}</b>!`, 900); })
+        .then(() => this.menu());
     },
     cardW(side) { const small = window.innerWidth < 600; return side === 'o' ? (small ? 96 : 130) : (small ? 112 : 150); },
     place(side, enter) {
@@ -962,18 +1061,25 @@
     async say(t, ms) { const l = this.E('.fb-log'); if (l) l.innerHTML = t; await wait(ms || 1100); },
     menu() {
       if (this.over) return;
-      const f = this.me[this.mi], box = this.E('.fb-moves'); box.innerHTML = '';
+      const f = this.me[this.mi], box = this.E('.fb-moves'), extra = this.E('.fb-extra'); box.innerHTML = ''; extra.innerHTML = '';
       this.E('.fb-log').innerHTML = `What will <b>${esc(f.name)}</b> do?`;
-      const mk = (label, sub, color, fn, cls) => { const b = document.createElement('button'); b.className = 'fb-move ' + (cls || ''); b.style.background = color;
-        b.innerHTML = `<b>${esc(label)}</b><span>${esc(sub)}</span>`; b.onclick = () => { if (!this.busy) fn(); }; box.appendChild(b); return b; };
-      mk(f.sig.name, `${TYPES[f.type].e} ${f.type} attack · ${f.atk} power`, TYPES[f.type].c, () => this.turn({ kind: 'sig' }));
-      mk(f.sp.name, f.sp.d, '#343a40', () => this.turn({ kind: 'sp' }));
-      const bench = this.me.map((x, i) => ({ x, i })).filter(o => o.i !== this.mi && o.x.hp > 0);
-      const sw = mk('Switch', bench.length ? 'Swap in another card (uses your turn)' : 'No one left to switch to', '#495057', () => this.switchMenu(), 'sw');
-      sw.disabled = !bench.length;
+      if (f.hp / f.max < .25 && !this.warned) { this.warned = true; FX.play('lowhp'); }
+      f.moves.forEach((m, i) => {
+        const b = document.createElement('button'); b.className = 'fb-move';
+        b.style.background = m.kind === 'sp' ? '#343a40' : TYPES[m.type].c;
+        b.innerHTML = `<b>${esc(m.name)}</b><span>${esc(m.d)}</span><em>PP ${m.pp}/${m.max}</em>`;
+        b.disabled = m.pp <= 0;
+        b.onclick = () => { if (!this.busy) { FX.play('select'); this.turn({ kind: 'move', i }); } };
+        box.appendChild(b);
+      });
+      if (f.moves.every(m => m.pp <= 0)) { const b = document.createElement('button'); b.className = 'fb-move'; b.style.background = '#868e96';
+        b.innerHTML = '<b>Struggle</b><span>Out of PP! Weak hit with recoil</span>'; b.onclick = () => { if (!this.busy) this.turn({ kind: 'move', i: -1 }); }; box.appendChild(b); }
+      const bench = this.me.filter((x, i) => i !== this.mi && x.hp > 0);
+      const sw = document.createElement('button'); sw.className = 'cards-btn ghost'; sw.textContent = bench.length ? '🔄 Switch card' : 'No one left to switch to';
+      sw.disabled = !bench.length; sw.onclick = () => { if (!this.busy) this.switchMenu(); }; extra.appendChild(sw);
     },
     switchMenu(forced) {
-      const box = this.E('.fb-moves'); box.innerHTML = '';
+      const box = this.E('.fb-moves'), extra = this.E('.fb-extra'); box.innerHTML = ''; extra.innerHTML = '';
       this.E('.fb-log').innerHTML = forced ? 'Who goes out next?' : 'Switch to who?';
       this.me.forEach((x, i) => {
         if (i === this.mi || x.hp <= 0) return;
@@ -982,101 +1088,118 @@
         b.onclick = () => { if (this.busy) return; if (forced) this.sendNext(i); else this.turn({ kind: 'switch', to: i }); };
         box.appendChild(b);
       });
-      if (!forced) { const b = document.createElement('button'); b.className = 'fb-move sw'; b.innerHTML = '<b>← Back</b><span>Pick a move instead</span>'; b.onclick = () => this.menu(); box.appendChild(b); }
+      if (!forced) { const b = document.createElement('button'); b.className = 'cards-btn ghost'; b.textContent = '← Back to moves'; b.onclick = () => this.menu(); extra.appendChild(b); }
     },
     cpuChoice() {
-      const f = this.cpu[this.ci], foe = this.me[this.mi];
-      if (f.sp.key === 'Clutch' && f.hp / f.max < .4 && Math.random() < .8) return { kind: 'sp' };
-      if (f.sp.key === 'Rizz' && f.boost === 1 && f.hp / f.max > .6 && Math.random() < .5) return { kind: 'sp' };
-      if (f.sp.key === 'Aura' && !f.shield && Math.random() < .25) return { kind: 'sp' };
-      if (['Rage', 'Yapping', 'Luck', 'Skill', 'Brain Cells'].includes(f.sp.key) && (eff(f.type, foe.type) < 1 || Math.random() < .35)) return { kind: 'sp' };
-      return { kind: 'sig' };
+      const f = this.cpu[this.ci], foe = this.me[this.mi], ok = f.moves.map((m, i) => ({ m, i })).filter(o => o.m.pp > 0);
+      if (!ok.length) return { kind: 'move', i: -1 };
+      const has = k => ok.find(o => o.m.kind === 'sp' && o.m.key === k);
+      if (has('Clutch') && f.hp / f.max < .4 && Math.random() < .8) return { kind: 'move', i: has('Clutch').i };
+      if (has('Rizz') && f.boost === 1 && f.hp / f.max > .55 && Math.random() < .45) return { kind: 'move', i: has('Rizz').i };
+      if (has('Aura') && !f.shield && Math.random() < .2) return { kind: 'move', i: has('Aura').i };
+      const attacks = ok.filter(o => !o.m.status);
+      if (!attacks.length) return { kind: 'move', i: ok[0].i };
+      // like a player: prefer the strong type move when it's effective
+      const score = o => (o.m.pow || 1.1) * (o.m.kind === 'sp' && o.m.key === 'Brain Cells' ? 1 : eff(f.type, foe.type)) * (o.m.acc || .9) * (.8 + Math.random() * .4);
+      attacks.sort((a, b) => score(b) - score(a));
+      return { kind: 'move', i: attacks[0].i };
     },
     async turn(mine) {
-      this.busy = true; this.E('.fb-moves').innerHTML = '';
+      this.busy = true; this.E('.fb-moves').innerHTML = ''; this.E('.fb-extra').innerHTML = '';
       const theirs = this.cpuChoice(), me = this.me[this.mi], cp = this.cpu[this.ci];
       if (mine.kind === 'switch') { await this.doSwitch(mine.to); await this.act('o', theirs); }
       else {
-        const pri = x => x.kind === 'sp' && x.f.sp.key === 'Skill' ? 1 : 0;
+        const pri = (f, m) => m.i >= 0 && f.moves[m.i].kind === 'sp' && f.moves[m.i].key === 'Skill' ? 1 : 0;
         const a = { side: 'm', m: mine, f: me }, b = { side: 'o', m: theirs, f: cp };
-        a.f = me; b.f = cp; a.kind = mine.kind; b.kind = theirs.kind;
-        const order = pri(a) !== pri(b) ? (pri(a) > pri(b) ? [a, b] : [b, a]) : (me.spd >= cp.spd ? [a, b] : [b, a]);
+        const pa = pri(me, mine), pb = pri(cp, theirs);
+        const order = pa !== pb ? (pa > pb ? [a, b] : [b, a]) : (me.spd >= cp.spd ? [a, b] : [b, a]);
         for (const o of order) { if (this.over) break; const f = o.side === 'm' ? this.me[this.mi] : this.cpu[this.ci]; if (f !== o.f || f.hp <= 0) continue; await this.act(o.side, o.m); }
       }
       this.busy = false;
-      if (!this.over) {
-        if (this.me[this.mi].hp <= 0) this.switchMenu(true); else this.menu();
-      }
+      if (!this.over) { if (this.me[this.mi].hp <= 0) this.switchMenu(true); else this.menu(); }
     },
     async doSwitch(i) {
       await this.say(`${esc(this.me[this.mi].name)}, come back!`, 700);
-      this.mi = i; this.place('m', true); await this.say(`Go, <b>${esc(this.me[i].name)}</b>!`, 900);
+      this.mi = i; this.warned = false; this.place('m', true); FX.play('sendOut'); await this.say(`Go, <b>${esc(this.me[i].name)}</b>!`, 900);
     },
-    async sendNext(i) { this.busy = true; this.mi = i; this.place('m', true); await this.say(`Go, <b>${esc(this.me[i].name)}</b>!`, 900); this.busy = false; this.menu(); },
-    dmg(att, def, mult, ignoreType) {
-      const e = ignoreType ? 1 : eff(att.type, def.type);
+    async sendNext(i) { this.busy = true; this.mi = i; this.warned = false; this.place('m', true); FX.play('sendOut'); await this.say(`Go, <b>${esc(this.me[i].name)}</b>!`, 900); this.busy = false; this.menu(); },
+    dmg(att, def, mult, ignoreType, type) {
+      const e = ignoreType ? 1 : eff(type || att.type, def.type);
       let d = att.atk * mult * e * att.boost * (.85 + Math.random() * .15);
+      const crit = Math.random() < .0625; if (crit) d *= 1.5;
       att.boost = 1;
       if (def.shield) { d *= .5; def.shield = false; }
-      return { d: Math.max(1, Math.round(d)), e };
+      return { d: Math.max(1, Math.round(d)), e, crit };
     },
-    async hit(side, d, e) {
+    async hit(side, r, type, quiet) {
       const tSide = side === 'm' ? 'o' : 'm', t = tSide === 'm' ? this.me[this.mi] : this.cpu[this.ci];
-      t.hp = Math.max(0, t.hp - d);
-      const el = this.E('.fb-slot.' + tSide + ' .fb-card'); if (el) { el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); }
-      beep(e > 1 ? [300, 200, 150] : [220, 160], .06, 'sawtooth');
-      this.hud(tSide); await wait(500);
-      if (e > 1) await this.say('It\'s super effective! 🔥', 800);
-      else if (e < 1) await this.say('It\'s not very effective…', 800);
+      t.hp = Math.max(0, t.hp - r.d);
+      const el = this.E('.fb-slot.' + tSide + ' .fb-card');
+      if (type) { FX.play(type); burst(el, TYPES[type].e, 9); await wait(260); }
+      if (el) { el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); }
+      FX.play(r.e > 1 || r.crit ? 'bigHit' : r.e < 1 ? 'weak' : 'hit');
+      this.hud(tSide); await wait(520);
+      if (quiet) return;
+      if (r.crit) await this.say('A critical hit! 💥', 750);
+      if (r.e > 1) { FX.play('super'); await this.say('It\'s super effective!', 850); }
+      else if (r.e < 1) await this.say('It\'s not very effective…', 850);
     },
-    async act(side, m) {
+    async act(side, choice) {
       const me = side === 'm', f = me ? this.me[this.mi] : this.cpu[this.ci], foe = me ? this.cpu[this.ci] : this.me[this.mi];
-      const who = (me ? '' : 'The computer\'s ') + '<b>' + esc(f.name) + '</b>';
-      if (f.stun) { f.stun = false; this.hud(side); await this.say(`${who} is stunned and can't move! 💫`); return; }
+      const who = (me ? '' : 'The foe\'s ') + '<b>' + esc(f.name) + '</b>';
+      if (f.stun) { f.stun = false; this.hud(side); FX.play('stun'); await this.say(`${who} is stunned and can't move! 💫`); return; }
       const el = this.E('.fb-slot.' + side + ' .fb-card');
-      const lunge = async () => { if (el) { el.classList.add(me ? 'lunge-r' : 'lunge-l'); await wait(220); el.classList.remove('lunge-r', 'lunge-l'); } };
-      if (m.kind === 'sig') {
-        await this.say(`${who} used <b>${esc(f.sig.name)}</b>!`, 650);
-        if (Math.random() < .07) { await this.say('But it missed!'); return; }
-        await lunge(); const r = this.dmg(f, foe, 1); await this.hit(side, r.d, r.e);
+      const lunge = async () => { FX.play('whoosh'); if (el) { el.classList.add(me ? 'lunge-r' : 'lunge-l'); await wait(200); el.classList.remove('lunge-r', 'lunge-l'); } };
+      if (choice.i < 0) {   // Struggle
+        await this.say(`${who} has no moves left and used <b>Struggle</b>!`, 700);
+        await lunge(); const r = this.dmg(f, foe, .5, true); await this.hit(side, r, null, true);
+        f.hp = Math.max(0, f.hp - Math.round(f.max * .12)); this.hud(side); await this.say(`${esc(f.name)} is hurt by recoil!`, 800);
+        return this.faints();
+      }
+      const m = f.moves[choice.i]; m.pp = Math.max(0, m.pp - 1);
+      await this.say(`${who} used <b>${esc(m.name)}</b>!`, 700);
+      if (m.kind !== 'sp') {
+        if (Math.random() > m.acc) { await lunge(); FX.play('miss'); await this.say(`${esc(foe.name)} dodged it! The attack missed!`); return; }
+        await lunge(); await this.hit(side, this.dmg(f, foe, m.pow, false, m.type), m.type);
       } else {
-        const k = f.sp.key; await this.say(`${who} used <b>${esc(f.sp.name)}</b>!`, 650);
-        if (k === 'Rizz') { f.boost = 1.8; beep([660, 880], .07, 'triangle'); this.hud(side); await this.say(`${esc(f.name)} is feeling himself. Next hit is charged! 💘`); }
-        else if (k === 'Aura') { f.shield = true; f.hp = Math.min(f.max, f.hp + f.max * .1); beep([523, 784], .07, 'triangle'); this.hud(side); await this.say(`${esc(f.name)} is surrounded by aura. 🛡`); }
-        else if (k === 'Clutch') { f.hp = Math.min(f.max, f.hp + f.max * .35); beep([523, 659, 784], .07, 'triangle'); this.hud(side); await this.say(`${esc(f.name)} clutched up and healed! 💚`); }
-        else if (k === 'Rage') { await lunge(); const r = this.dmg(f, foe, 1.45); await this.hit(side, r.d, r.e); f.hp = Math.max(0, f.hp - Math.round(r.d * .2)); this.hud(side); await this.say(`${esc(f.name)} hurt himself in the rage! 😤`, 900); }
-        else if (k === 'Yapping') { let n = 0; for (let i = 0; i < 3; i++) { if (Math.random() < .75) { n++; await lunge(); const r = this.dmg(f, foe, .42); f.boost = 1; await this.hit(side, r.d, i === 2 ? r.e : 1); } } await this.say(n ? `Hit ${n} time${n > 1 ? 's' : ''}!` : 'All the yapping missed!'); }
-        else if (k === 'Brain Cells') { await lunge(); const r = this.dmg(f, foe, 1.05, true); await this.hit(side, r.d, 1); if (Math.random() < .3 && foe.hp > 0) { foe.stun = true; this.hud(me ? 'o' : 'm'); await this.say(`${esc(foe.name)} is confused and stunned! 💫`); } }
-        else if (k === 'Luck') { await lunge(); if (Math.random() < .5) { await this.say('🍀 Lucky!', 600); const r = this.dmg(f, foe, 2); await this.hit(side, r.d, r.e); } else { const r = this.dmg(f, foe, .3); await this.hit(side, r.d, 1); await this.say('…it was a dud. 🥲'); } }
-        else if (k === 'Skill') { await lunge(); const r = this.dmg(f, foe, .8); await this.hit(side, r.d, r.e); }
+        const k = m.key, fs = side;
+        if (k === 'Rizz') { f.boost = 1.8; FX.play('buff'); burst(el, '💘', 7); this.hud(fs); await this.say(`${esc(f.name)}'s confidence rose sharply! Next hit is charged!`); }
+        else if (k === 'Aura') { f.shield = true; f.hp = Math.min(f.max, f.hp + f.max * .1); FX.play('shield'); burst(el, '✨', 8); this.hud(fs); await this.say(`${esc(f.name)} is surrounded by aura! 🛡`); }
+        else if (k === 'Clutch') { f.hp = Math.min(f.max, f.hp + f.max * .35); FX.play('heal'); burst(el, '💚', 8); this.hud(fs); await this.say(`${esc(f.name)} clutched up and restored HP!`); }
+        else if (k === 'Rage') { await lunge(); const r = this.dmg(f, foe, 1.5, false); await this.hit(side, r, f.type); f.hp = Math.max(0, f.hp - Math.round(r.d * .2)); this.hud(fs); await this.say(`${esc(f.name)} is hurt by recoil! 😤`, 900); }
+        else if (k === 'Yapping') { let n = 0; for (let i = 0; i < 3; i++) { if (foe.hp <= 0) break; if (Math.random() < .75) { n++; await lunge(); const r = this.dmg(f, foe, .42, false); await this.hit(side, r, i === 0 ? f.type : null, true); } } await this.say(n ? `Hit ${n} time${n > 1 ? 's' : ''}!` : 'All the yapping missed!'); }
+        else if (k === 'Brain Cells') { await lunge(); const r = this.dmg(f, foe, 1.05, true); await this.hit(side, r, 'Cosmic'); if (Math.random() < .3 && foe.hp > 0) { foe.stun = true; FX.play('stun'); this.hud(me ? 'o' : 'm'); await this.say(`${esc(foe.name)} is confused and stunned! 💫`); } }
+        else if (k === 'Luck') { await lunge(); if (Math.random() < .5) { await this.say('🍀 Lucky!', 600); await this.hit(side, this.dmg(f, foe, 2, false), f.type); } else { await this.hit(side, this.dmg(f, foe, .3, false), null, true); await this.say('…it was a dud. 🥲'); } }
+        else if (k === 'Skill') { await lunge(); await this.hit(side, this.dmg(f, foe, .85, false), f.type); }
       }
       await this.faints();
     },
     async faints() {
       const cp = this.cpu[this.ci], me = this.me[this.mi];
       if (cp.hp <= 0) {
-        const el = this.E('.fb-slot.o .fb-card'); if (el) el.classList.add('faint');
-        await this.say(`The computer's <b>${esc(cp.name)}</b> fainted! 💀`);
+        const el = this.E('.fb-slot.o .fb-card'); if (el) el.classList.add('faint'); FX.play('faint');
+        await this.say(`The foe's <b>${esc(cp.name)}</b> fainted!`, 1200);
         const next = this.cpu.findIndex(x => x.hp > 0);
         if (next < 0) return this.end(true);
-        this.ci = next; this.place('o', true); await this.say(`The computer sends out <b>${esc(this.cpu[next].name)}</b>!`);
+        this.ci = next; this.place('o', true); FX.play('sendOut'); await this.say(`The computer sends out <b>${esc(this.cpu[next].name)}</b>!`);
       }
       if (me.hp <= 0 && !this.over) {
-        const el = this.E('.fb-slot.m .fb-card'); if (el) el.classList.add('faint');
-        await this.say(`<b>${esc(me.name)}</b> fainted! 💀`);
+        const el = this.E('.fb-slot.m .fb-card'); if (el) el.classList.add('faint'); FX.play('faint');
+        await this.say(`<b>${esc(me.name)}</b> fainted!`, 1200);
         if (!this.me.some(x => x.hp > 0)) return this.end(false);
       }
     },
     async end(won) {
-      this.over = true; this.E('.fb-moves').innerHTML = '';
-      if (won) { beep([523, 659, 784, 1047, 1319], .1); await this.say('🏆 <b>You won the battle!</b> +1 🍀 Lucky Pack', 400);
+      this.over = true; this.E('.fb-moves').innerHTML = ''; this.E('.fb-extra').innerHTML = ''; FX.fadeMusic();
+      if (won) { FX.play('win'); await this.say('🏆 <b>You defeated the computer!</b> +1 🍀 Lucky Pack', 400);
         window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'winning a Full Battle', lucky: true } })); }
-      else { beep([392, 330, 262], .15); await this.say('💀 <b>All your cards fainted.</b> The computer wins this one.', 400); }
+      else { FX.play('lose'); await this.say('💀 <b>You\'re out of usable cards!</b> You blacked out…', 400); }
       const box = this.E('.fb-moves');
       const a = document.createElement('button'); a.className = 'fb-move'; a.style.background = '#2f9e44'; a.innerHTML = '<b>Play again</b><span>Pick a new team</span>'; a.onclick = () => this.pick();
-      const b = document.createElement('button'); b.className = 'fb-move sw'; b.innerHTML = '<b>Back</b><span>Other battle modes</span>'; b.onclick = () => { Battle.on = false; Battle.intro(); };
+      const b = document.createElement('button'); b.className = 'fb-move'; b.style.background = '#495057'; b.innerHTML = '<b>Back</b><span>Other battle modes</span>'; b.onclick = () => { Battle.on = false; Battle.intro(); };
       box.append(a, b);
-    }
+    },
+    stop() { FX.stopMusic(); }
   };
 
   function tiltIf(c) { if (matchMedia('(hover: hover)').matches) tilt(c); }
