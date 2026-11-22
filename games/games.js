@@ -281,14 +281,17 @@
     document.getElementById('gameClicker').style.display = which === 'clicker' ? '' : 'none';
     document.getElementById('gameBlocks').style.display = which === 'blocks' ? '' : 'none';
     document.getElementById('gameFlash').style.display = which === 'flash' ? '' : 'none';
-    const B = window.MBBlocks, F = window.MBFlash;
+    document.getElementById('gameCards').style.display = which === 'cards' ? '' : 'none';
+    const B = window.MBBlocks, F = window.MBFlash, K = window.MBCards;
     if (which !== 'flash' && F) F.hide();
+    if (which !== 'cards' && K) K.hide();
     if (which !== 'flappy') Flappy.stop();
     if (which !== 'clicker') Clicker.stop();
     if (which !== 'blocks' && B) B.stop();
     if (which === 'flappy') { Flappy.start(); Board.load(); }
     else if (which === 'clicker') Clicker.start();
     else if (which === 'flash') { if (F) F.show(); }
+    else if (which === 'cards') { if (K) K.show(); }
     else if (B) B.start();
   }
   window.MBGames = {
@@ -296,15 +299,16 @@
       if (!inited) {
         inited = true;
         Board.init(document.getElementById('flappyBoard'));
-        Flappy.init(document.getElementById('flappyCanvas'), { onOver: s => Board.offer(s) });
+        Flappy.init(document.getElementById('flappyCanvas'), { onOver: s => { Board.offer(s); if (s >= 10) window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'scoring ' + s + ' in Flappy Monkey' } })); } });
         Clicker.init(document.getElementById('clickerRoot'));
         if (window.MBBlocks) MBBlocks.init(document.getElementById('blocksRoot'));
         if (window.MBFlash) MBFlash.init(document.getElementById('flashRoot'));
+        if (window.MBCards) MBCards.init(document.getElementById('cardsRoot'));
         document.querySelectorAll('.game-pick').forEach(b => b.onclick = () => pick(b.dataset.game));
       }
       pick(current);
     },
-    hide() { Flappy.stop(); Clicker.stop(); if (window.MBBlocks) MBBlocks.stop(); if (window.MBFlash) MBFlash.hide(); }
+    hide() { Flappy.stop(); Clicker.stop(); if (window.MBBlocks) MBBlocks.stop(); if (window.MBFlash) MBFlash.hide(); if (window.MBCards) MBCards.hide(); }
   };
   document.addEventListener('visibilitychange', () => { if (document.hidden) window.MBGames.hide(); });
 })();
