@@ -279,12 +279,15 @@
     document.getElementById('gameFlappy').style.display = which === 'flappy' ? '' : 'none';
     document.getElementById('gameClicker').style.display = which === 'clicker' ? '' : 'none';
     document.getElementById('gameBlocks').style.display = which === 'blocks' ? '' : 'none';
-    const B = window.MBBlocks;
+    document.getElementById('gameFlash').style.display = which === 'flash' ? '' : 'none';
+    const B = window.MBBlocks, F = window.MBFlash;
+    if (which !== 'flash' && F) F.hide();
     if (which !== 'flappy') Flappy.stop();
     if (which !== 'clicker') Clicker.stop();
     if (which !== 'blocks' && B) B.stop();
     if (which === 'flappy') { Flappy.start(); Board.load(); }
     else if (which === 'clicker') Clicker.start();
+    else if (which === 'flash') { if (F) F.show(); }
     else if (B) B.start();
   }
   window.MBGames = {
@@ -295,11 +298,12 @@
         Flappy.init(document.getElementById('flappyCanvas'), { onOver: s => Board.offer(s) });
         Clicker.init(document.getElementById('clickerRoot'));
         if (window.MBBlocks) MBBlocks.init(document.getElementById('blocksRoot'));
+        if (window.MBFlash) MBFlash.init(document.getElementById('flashRoot'));
         document.querySelectorAll('.game-pick').forEach(b => b.onclick = () => pick(b.dataset.game));
       }
       pick(current);
     },
-    hide() { Flappy.stop(); Clicker.stop(); if (window.MBBlocks) MBBlocks.stop(); }
+    hide() { Flappy.stop(); Clicker.stop(); if (window.MBBlocks) MBBlocks.stop(); if (window.MBFlash) MBFlash.hide(); }
   };
   document.addEventListener('visibilitychange', () => { if (document.hidden) window.MBGames.hide(); });
 })();
