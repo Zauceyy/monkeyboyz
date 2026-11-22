@@ -56,6 +56,31 @@
   /* ---------- home ---------- */
   .hero{padding:90px 22px 0;text-align:center}
   .hero .shot{max-width:1000px;margin:56px auto 0;border-radius:28px;overflow:hidden}
+  .hero-row{display:flex;gap:16px;justify-content:center;align-items:stretch;max-width:1240px;margin:56px auto 0}
+  .hero-row .shot{margin:0;flex:1 1 auto;min-width:0}
+  .dc-side{flex:0 0 220px;background:var(--tile);border-radius:28px;padding:20px 18px;text-align:left;display:flex;flex-direction:column;gap:12px;min-height:0}
+  .dcs-head{display:flex;align-items:center;gap:8px;color:#5865f2;text-decoration:none;font-size:17px}
+  .dcs-head svg{width:24px;height:24px}
+  .dcs-head b{color:var(--ink)}
+  .dcs-online{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--ink2)}
+  .dcs-online b{color:var(--ink);font-size:20px}
+  .dcs-online i{width:9px;height:9px;border-radius:50%;background:#23a55a;box-shadow:0 0 0 3px rgba(35,165,90,.18)}
+  .dcs-voice{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:6px}
+  .dcs-voice h6{margin:4px 0 2px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2)}
+  .dcs-voice .vrow{display:flex;align-items:center;gap:8px;font-size:14px;min-width:0}
+  .dcs-voice .vrow img{width:28px;height:28px;border-radius:50%;flex:none;background:var(--line)}
+  .dcs-voice .vrow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dcs-voice .vrow .st{width:8px;height:8px;border-radius:50%;background:#23a55a;flex:none}
+  .dcs-voice .vrow .st.idle{background:#f0b232} .dcs-voice .vrow .st.dnd{background:#f23f43}
+  .dcs-voice .quiet{color:var(--ink2);font-size:14px}
+  .dcs-join{display:block;text-align:center;background:#5865f2;color:#fff;border-radius:980px;padding:10px 14px;font-size:15px;text-decoration:none}
+  @media (max-width:900px){
+    .hero-row{flex-direction:column;align-items:center}
+    .hero-row .shot{width:100%}
+    .dc-side{flex:none;width:100%;max-width:1000px;box-sizing:border-box}
+    .dcs-voice{flex-direction:row;flex-wrap:wrap;gap:8px 14px}
+    .dcs-voice h6{width:100%}
+  }
   .hero .shot img{width:100%;height:auto;display:block;transition:opacity .25s}
   .banner-pick{max-width:1000px;margin:18px auto 0;display:flex;gap:10px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:thin;justify-content:center;flex-wrap:wrap}
   .bp{border:0;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--ink2);font:inherit;font-size:12px;flex:none}
@@ -425,13 +450,19 @@
     <p class="eyebrow">On YouTube</p>
     <h1 class="h-xl">MonkeyBoyz.</h1>
     <p class="lede">Nine friends who play games together.</p>
-    <a class="dc-chip" id="dcChip" href="#discord" hidden></a>
-    <a class="dc-home-vc" id="dcVoiceHome" href="#discord" hidden></a>
     <div class="links">
       <a class="pill" href="https://www.youtube.com/@YTMonkeyBoyz" target="_blank" rel="noopener">Watch now</a>
       <a class="lnk" href="https://www.youtube.com/@YTMonkeyBoyz?sub_confirmation=1" target="_blank" rel="noopener">Subscribe</a>
     </div>
-    <div class="shot reveal"><img id="bannerImg" alt="The MonkeyBoyz"></div>
+    <div class="hero-row">
+      <div class="shot reveal"><img id="bannerImg" alt="The MonkeyBoyz"></div>
+      <aside class="dc-side reveal" id="dcSide" hidden aria-label="Discord activity">
+        <a class="dcs-head" href="#discord"><svg><use href="#i-dc"/></svg><b>Discord</b></a>
+        <div class="dcs-online" id="dcsOnline"></div>
+        <div class="dcs-voice" id="dcsVoice"></div>
+        <a class="dcs-join" href="https://discord.gg/Gw9YN9t" target="_blank" rel="noopener">Join the server</a>
+      </aside>
+    </div>
     <script>
     /* a different banner each time the page loads (never the same one twice in a row) */
     (function(){
@@ -1102,8 +1133,9 @@ async function loadDiscord(){
   let inv = null; try { inv = await fetch('https://discord.com/api/v10/invites/' + DC_INVITE + '?with_counts=true').then(r => r.json()); } catch (e) {}
   if (!inv || !inv.guild) return;
   const online = inv.approximate_presence_count || 0, total = inv.approximate_member_count || 0;
-  const chip = document.getElementById('dcChip');
-  chip.innerHTML = ''; chip.append(el('i'), document.createTextNode(online.toLocaleString() + ' online on Discord')); chip.hidden = false;
+  const side = document.getElementById('dcSide'), so = document.getElementById('dcsOnline');
+  so.innerHTML = ''; so.append(el('i'), el('b', null, online.toLocaleString()), document.createTextNode('online · ' + total.toLocaleString() + ' members'));
+  side.hidden = false;
   const live = document.getElementById('dcLive'); live.innerHTML = '';
   const counts = el('div', 'dc-counts');
   const a = el('div'); a.append(el('span', 'dot'), document.createTextNode(' '), el('b', null, online.toLocaleString()), document.createTextNode(' online'));
@@ -1114,24 +1146,26 @@ async function loadDiscord(){
   const chans = {}; (w.channels || []).forEach(c => chans[c.id] = c.name);
   const person = m => { const p = el('span', 'dc-p'); const im = new Image(); im.src = /^https:\/\//.test(m.avatar_url || '') ? m.avatar_url : ''; im.alt = ''; im.loading = 'lazy';
     p.append(im, el('span', 'st ' + (m.status || 'online')), document.createTextNode(m.username)); return p; };
-  const inVoice = {}; w.members.filter(m => m.channel_id && chans[m.channel_id]).forEach(m => (inVoice[m.channel_id] = inVoice[m.channel_id] || []).push(m));
+  const inVoice = {}; w.members.filter(m => m.channel_id).forEach(m => (inVoice[m.channel_id] = inVoice[m.channel_id] || []).push(m));
+  const chanName = id => chans[id] || 'Voice chat';
   Object.keys(inVoice).forEach(id => {
     live.appendChild(el('h5', null, '🔊 In voice'));
-    const vc = el('div', 'dc-vc'); vc.appendChild(el('b', null, chans[id]));
+    const vc = el('div', 'dc-vc'); vc.appendChild(el('b', null, chanName(id)));
     const ppl = el('div', 'dc-people'); inVoice[id].forEach(m => ppl.appendChild(person(m))); vc.appendChild(ppl); live.appendChild(vc);
   });
-  // homepage: who's in voice right now
-  const home = document.getElementById('dcVoiceHome');
-  if (home) {
-    home.innerHTML = '';
+  // homepage side card: who's in voice right now
+  const sv = document.getElementById('dcsVoice');
+  if (sv) {
+    sv.innerHTML = '';
     const ids = Object.keys(inVoice);
-    if (ids.length) {
-      const total = ids.reduce((n, id) => n + inVoice[id].length, 0);
-      home.appendChild(el('span', 'vc-l', '🔊 In voice' + (ids.length === 1 ? ' · ' + chans[ids[0]] : '') + ':'));
-      ids.flatMap(id => inVoice[id]).slice(0, 8).forEach(m => home.appendChild(person(m)));
-      if (total > 8) home.appendChild(el('span', 'more', '+' + (total - 8) + ' more'));
-      home.hidden = false;
-    } else home.hidden = true;
+    if (!ids.length) sv.appendChild(el('p', 'quiet', 'Nobody in voice right now.'));
+    ids.forEach(id => {
+      sv.appendChild(el('h6', null, '🔊 ' + chanName(id)));
+      inVoice[id].forEach(m => {
+        const r = el('div', 'vrow'); const im = new Image(); im.src = /^https:\/\//.test(m.avatar_url || '') ? m.avatar_url : ''; im.alt = ''; im.loading = 'lazy';
+        r.append(im, el('i', 'st ' + (m.status || 'online')), el('span', null, m.username)); sv.appendChild(r);
+      });
+    });
   }
   const others = w.members.filter(m => !m.channel_id).slice(0, 30);
   if (others.length) { live.appendChild(el('h5', null, 'Online now')); const ppl = el('div', 'dc-people'); others.forEach(m => ppl.appendChild(person(m))); live.appendChild(ppl); }
