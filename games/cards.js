@@ -615,21 +615,15 @@
     on: false,
     el() { return root.querySelector('.battle'); },
     intro() {
+      FX.stopMusic(); this.on = false;
       const n = owned().filter(id => !id.startsWith('secret:')).length;
-      this.el().innerHTML = `<div class="bt-score">⚔️ Card Battle</div>
-        <div class="bt-modes">
-          <div class="bt-mode"><h4>🐉 Full Battle <span class="newtag">NEW</span></h4>
-            <p>Pokémon style. Pick 3 cards, each with HP, 2 moves and a type. Take turns attacking and switching until one side is knocked out.</p>
-            <button class="cards-btn fb-start">🤖 Vs computer</button></div>
-          <div class="bt-mode"><h4>⚡ Quick Battle</h4>
-            <p>5 rounds. Pick a card and a stat each round, higher number wins. About a minute.</p>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button class="cards-btn bt-start">🤖 Vs computer</button><button class="cards-btn bt-pvp" style="background:#5865f2;color:#fff">🌐 Vs a friend</button></div></div>
-        </div>
-        <p class="bt-msg">Win either one for a <b>🍀 Lucky Pack</b>.</p>
+      this.el().innerHTML = `<div class="bt-score">🐉 Card Battle</div>
+        <p class="bt-msg">Pokémon style. Pick 3 of your cards. Each one has HP, a type and 4 moves. Take turns attacking and switching until one side is knocked out. Win for a <b>🍀 Lucky Pack</b>.</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button class="cards-btn fb-start">🤖 Vs computer</button><button class="cards-btn bt-pvp" style="background:#5865f2;color:#fff">🌐 Vs a friend (online)</button></div>
         ${n < 6 ? `<p class="bt-msg" style="color:var(--ink2);font-size:14px">You have ${n} card${n === 1 ? '' : 's'}, so you'll borrow some Commons (marked LOAN) if you need them.</p>` : ''}`;
-      this.el().querySelector('.bt-start').onclick = () => { PvP.close(); this.start(); };
+      this.el().querySelector('.fb-start').onclick = () => { PvP.close(); Full.pick('cpu'); };
       this.el().querySelector('.bt-pvp').onclick = () => PvP.lobby();
-      this.el().querySelector('.fb-start').onclick = () => { PvP.close(); Full.pick(); };
     },
     deal() {
       const ms = members(), pool = owned().filter(id => !id.startsWith('secret:')).map(cardById).filter(Boolean);
@@ -637,83 +631,10 @@
       const hand = pool.slice(0, 5);
       while (hand.length < 5) { const c = makeCard(ms[Math.floor(Math.random() * ms.length)], 1 + Math.floor(Math.random() * 50)); c.loan = true; hand.push(c); }
       return hand;
-    },
-    start() {
-      this.on = true;
-      const ms = members();
-      this.mine = this.deal();
-      // computer gets cards around the same rarity as yours
-      this.cpu = this.mine.map(c => { const lvl = Math.max(0, Math.min(5, c.lvl + Math.floor(Math.random() * 3) - 1)), rar = RAR[lvl];
-        return makeCard(ms[Math.floor(Math.random() * ms.length)], rar.from + Math.floor(Math.random() * (rar.to - rar.from + 1))); });
-      this.used = []; this.results = []; this.round = 0; this.cur = null;
-      this.board('Computer');
-      this.draw();
-    },
-    board(opp) {
-      this.el().innerHTML = `<div class="bt-score"></div><div class="bt-dots"></div>
-        <div class="bt-table">
-          <div class="bt-side"><h5>Your card</h5><div class="bt-slot me"></div></div>
-          <div class="bt-vs">VS</div>
-          <div class="bt-side"><h5 class="bt-oppname">${esc(opp)}</h5><div class="bt-slot cpu"></div></div>
-        </div>
-        <div class="bt-pick"></div><p class="bt-msg"></p><div class="bt-act"></div>
-        <h5 style="margin:18px 0 0;font-size:13px;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em">Your hand</h5><div class="bt-hand"></div>`;
-    },
-    w() { return window.innerWidth < 600 ? Math.min(150, Math.floor((window.innerWidth - 80) / 2)) : 190; },
-    draw() {
-      const E = s => this.el().querySelector(s), you = this.results.filter(r => r === 'w').length, them = this.results.filter(r => r === 'l').length;
-      E('.bt-score').textContent = this.round < 5 ? `You ${you} – ${them} Computer · Round ${this.round + 1} of 5` : `Final: You ${you} – ${them} Computer`;
-      E('.bt-dots').innerHTML = Array.from({ length: 5 }, (_, i) => `<i class="${this.results[i] || ''}"></i>`).join('');
-      const me = E('.bt-slot.me'), cpu = E('.bt-slot.cpu');
-      me.innerHTML = ''; cpu.innerHTML = '';
-      if (this.cur != null) { const c = cardEl(this.mine[this.cur], this.w()); tiltIf(c); me.appendChild(c); }
-      else me.innerHTML = '<div class="empty">Pick a card from your hand below</div>';
-      if (this.round < 5) { const b = document.createElement('div'); b.className = 'tc back'; b.style.setProperty('--w', this.w() + 'px'); b.innerHTML = '<div class="in">🐒</div>'; cpu.appendChild(b); }
-      // stat buttons
-      const pk = E('.bt-pick'); pk.innerHTML = '';
-      if (this.cur != null && this.round < 5) this.mine[this.cur].stats.forEach(st => {
-        const b = document.createElement('button'); b.textContent = `${st.name} ${st.val}`; b.onclick = () => this.play(st.name); pk.appendChild(b); });
-      E('.bt-msg').innerHTML = this.round < 5 ? (this.cur == null ? 'Choose a card to play.' : 'Now pick the stat you think beats theirs.') : '';
-      E('.bt-act').innerHTML = '';
-      // hand
-      const hand = E('.bt-hand'); hand.innerHTML = '';
-      this.mine.forEach((c, i) => {
-        const el = cardEl(c, window.innerWidth < 600 ? 96 : 118);
-        if (c.loan) { const t = document.createElement('span'); t.className = 'loan'; t.textContent = 'LOAN'; el.appendChild(t); }
-        if (this.used.includes(i)) el.classList.add('used');
-        else { if (i === this.cur) el.classList.add('sel'); el.onclick = () => { if (this.round < 5) { this.cur = i; this.draw(); } }; }
-        hand.appendChild(el);
-      });
-    },
-    play(stat) {
-      const E = s => this.el().querySelector(s), mine = this.mine[this.cur], theirs = this.cpu[this.round];
-      const a = allStats(mine)[stat], b = allStats(theirs)[stat], res = a > b ? 'w' : a < b ? 'l' : 't';
-      this.results.push(res); this.used.push(this.cur);
-      const cpu = E('.bt-slot.cpu'); cpu.innerHTML = ''; const c = cardEl(theirs, this.w()); tiltIf(c); cpu.appendChild(c);
-      E('.bt-pick').innerHTML = '';
-      beep(res === 'w' ? [523, 784] : res === 'l' ? [330, 220] : [440, 440], .1);
-      E('.bt-msg').innerHTML = `Your ${esc(stat)} <b>${a}</b> vs their ${esc(stat)} <b>${b}</b>: ` +
-        (res === 'w' ? '<span class="w">you win the round!</span>' : res === 'l' ? '<span class="l">they win the round.</span>' : 'tie.');
-      this.round++; const done = this.round >= 5;
-      const you = this.results.filter(r => r === 'w').length, them = this.results.filter(r => r === 'l').length;
-      E('.bt-score').textContent = `You ${you} – ${them} Computer` + (done ? '' : ` · next: round ${this.round + 1} of 5`);
-      E('.bt-dots').innerHTML = Array.from({ length: 5 }, (_, i) => `<i class="${this.results[i] || ''}"></i>`).join('');
-      const act = E('.bt-act'); const btn = document.createElement('button'); btn.className = 'cards-btn';
-      if (!done) { btn.textContent = 'Next round'; btn.onclick = () => { this.cur = null; this.draw(); }; }
-      else {
-        btn.textContent = 'Play again'; btn.onclick = () => this.start();
-        setTimeout(() => {
-          const m = E('.bt-msg');
-          if (you > them) { m.innerHTML += '<br><b class="w">🏆 You won the battle! +1 🍀 Lucky Pack</b>'; window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'winning a Card Battle', lucky: true } })); }
-          else if (you < them) m.innerHTML += '<br><b class="l">The computer won this one. Run it back?</b>';
-          else m.innerHTML += '<br><b>It\'s a draw. No pack this time.</b>';
-        }, 500);
-      }
-      act.appendChild(btn);
-      E('.bt-hand').querySelectorAll('.tc').forEach((el, i) => { if (this.used.includes(i)) { el.classList.add('used'); el.classList.remove('sel'); el.onclick = null; } });
     }
   };
-  /* ---- online Card Battle: each player brings their own cards; you take turns choosing the stat ---- */
+
+  /* ---- online battles: room codes, browser to browser (PeerJS) ---- */
   const PvP = {
     peer: null, conn: null, host: false, opp: 'Friend', hb: 0, seen: 0, me: '',
     E(s) { return Battle.el().querySelector(s); },
@@ -724,12 +645,13 @@
         const sc = document.createElement('script'); sc.src = src; sc.onload = () => window.Peer ? ok() : bad(); sc.onerror = bad; document.head.appendChild(sc);
       })), Promise.reject());
     },
+    online() { return !!(this.conn && this.conn.open); },
     close() { clearInterval(this.hb); this.hb = 0; try { this.conn && this.conn.close(); } catch (e) {} try { this.peer && this.peer.destroy(); } catch (e) {} this.conn = this.peer = null; },
     send(m) { try { if (this.conn && this.conn.open) this.conn.send(m); } catch (e) {} },
     lobby(msg) {
-      this.close(); Battle.on = false;
-      Battle.el().innerHTML = `<div class="bt-score">🌐 Card Battle online</div>
-        <p class="bt-msg">Battle a friend with your real cards. One of you makes a room, the other joins with the code. You take turns choosing the stat. The winner gets a <b>🍀 Lucky Pack</b>.</p>
+      this.close(); Battle.on = false; FX.stopMusic();
+      Battle.el().innerHTML = `<div class="bt-score">🌐 Battle a friend</div>
+        <p class="bt-msg">Battle with your real cards. One of you makes a room, the other joins with the code. The winner gets a <b>🍀 Lucky Pack</b>.</p>
         <div style="max-width:340px;margin:0 auto;display:flex;flex-direction:column;gap:10px">
           <input class="pv-name" maxlength="16" placeholder="Your name" style="font:inherit;font-size:16px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-align:center">
           <button class="cards-btn pv-create">Create room</button>
@@ -737,7 +659,7 @@
           <button class="cards-btn ghost pv-back">← Back</button>
           <p class="bt-msg pv-msg" style="color:#e5484d">${esc(msg || '')}</p>
         </div>`;
-      const nm = this.E('.pv-name'); nm.value = Feed.name();
+      const nm = this.E('.pv-name'); nm.value = this.me || Feed.name();
       const code = this.E('.pv-code'); code.oninput = () => { code.value = code.value.toUpperCase().replace(/[^A-Z]/g, ''); };
       code.onkeydown = e => { if (e.key === 'Enter') this.join(); };
       this.E('.pv-create').onclick = () => this.create();
@@ -766,7 +688,7 @@
         });
         peer.on('connection', conn => {
           if (this.conn && this.conn.open) { conn.on('open', () => { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 400); }); return; }
-          this.wire(conn); conn.on('open', () => this.send({ t: 'hi', name: this.me || Feed.name() || 'Friend' }));
+          this.wire(conn); conn.on('open', () => this.send({ t: 'hi', name: this.me || 'Friend' }));
         });
         peer.on('error', e => { if (e.type === 'unavailable-id') return this.create(); if (!this.conn) this.lobby('Couldn\'t make a room (' + (e.type || 'network') + ').'); });
       }).catch(() => this.lobby('Couldn\'t load online play. Check your connection.'));
@@ -781,7 +703,7 @@
         const fail = m => { if (done) return; done = true; this.lobby(m); };
         const t = setTimeout(() => fail('Couldn\'t reach that room. Check the code.'), 15000);
         peer.on('open', () => { const conn = peer.connect(this.room(code), { reliable: true }); this.wire(conn);
-          conn.on('open', () => { done = true; clearTimeout(t); this.send({ t: 'hi', name: this.me || Feed.name() || 'Friend' }); }); });
+          conn.on('open', () => { done = true; clearTimeout(t); this.send({ t: 'hi', name: this.me || 'Friend' }); }); });
         peer.on('error', e => { clearTimeout(t); fail(e.type === 'peer-unavailable' ? 'No room with that code.' : 'Connection problem (' + (e.type || 'network') + ').'); });
       }).catch(() => this.lobby('Couldn\'t load online play. Check your connection.'));
     },
@@ -792,85 +714,20 @@
       clearInterval(this.hb);
       this.hb = setInterval(() => { if (this.conn !== conn) return; this.send({ t: 'hb' }); if (conn.open && Date.now() - this.seen > 30000) { this.conn = null; this.left(); } }, 3000);
     },
-    left() { if (!this.peer && !this.conn) return; const n = this.opp; this.close(); if (root && !root.querySelector('.battle').hidden) this.lobby(n + ' left the battle.'); },
-    ready() {
-      Battle.el().innerHTML = `<div class="bt-score">Vs ${esc(this.opp)}</div><p class="bt-msg">You're connected! Best of 5. You'll take turns picking the stat.</p>
-        <button class="cards-btn pv-go">Start battle</button>`;
-      this.E('.pv-go').onclick = () => { this.send({ t: 'go' }); this.start(); };
+    left() {
+      if (!this.peer && !this.conn) return; const n = this.opp; this.close(); Full.mode = null;
+      if (root && !root.querySelector('.battle').hidden) this.lobby(n + ' left the battle.');
     },
     onMsg(m) {
       if (!m || typeof m !== 'object') return;
-      if (m.t === 'hi') { this.opp = String(m.name || 'Friend').slice(0, 16); if (!this.st) this.ready(); }
+      const okId = x => typeof x === 'string' && /^[a-z0-9 _.-]+:\d{1,3}$/i.test(x);
+      if (m.t === 'hi') { this.opp = String(m.name || 'Friend').slice(0, 16); Full.pick('online'); }
       else if (m.t === 'full') this.lobby('That room already has two players.');
-      else if (m.t === 'go') this.start();
-      else if (m.t === 'play' && this.st) { const r = Number(m.round); if (r >= 0 && r < 5 && typeof m.card === 'string' && /^[a-z0-9 _.-]+:\d{1,3}$/i.test(m.card)) { this.st.opp[r] = { card: m.card, stat: STATS.includes(m.stat) ? m.stat : null }; this.resolve(); this.draw(); } }
-    },
-    start() {
-      this.st = { mine: Battle.deal(), used: [], results: [], round: 0, cur: null, my: [], opp: [], shown: -1 };
-      Battle.on = true; Battle.board(this.opp); this.draw();
-    },
-    chooserIsMe(r) { return (r % 2 === 0) === this.host; },
-    w() { return window.innerWidth < 600 ? Math.min(150, Math.floor((window.innerWidth - 80) / 2)) : 190; },
-    draw() {
-      const st = this.st, E = s => this.E(s); if (!st || !E('.bt-score')) return;
-      const r = st.round, you = st.results.filter(x => x === 'w').length, them = st.results.filter(x => x === 'l').length;
-      E('.bt-score').textContent = r < 5 ? `You ${you} – ${them} ${this.opp} · Round ${r + 1} of 5` : `Final: You ${you} – ${them} ${this.opp}`;
-      E('.bt-dots').innerHTML = Array.from({ length: 5 }, (_, i) => `<i class="${st.results[i] || ''}"></i>`).join('');
-      if (st.shown === r - 1 && r > 0 && st.revealed) return;   // keep the last reveal on screen until "Next round"
-      const me = E('.bt-slot.me'), op = E('.bt-slot.cpu'); me.innerHTML = ''; op.innerHTML = '';
-      const showIdx = st.my[r] ? st.my[r].idx : st.cur;
-      if (showIdx != null) me.appendChild(cardEl(st.mine[showIdx], this.w())); else me.innerHTML = '<div class="empty">Pick a card from your hand below</div>';
-      const b = document.createElement('div'); b.className = 'tc back'; b.style.setProperty('--w', this.w() + 'px'); b.innerHTML = '<div class="in">' + (st.opp[r] ? '✅' : '🐒') + '</div>'; op.appendChild(b);
-      const pk = E('.bt-pick'); pk.innerHTML = ''; const act = E('.bt-act'); act.innerHTML = '';
-      const chooser = this.chooserIsMe(r);
-      if (r < 5 && !st.my[r]) {
-        if (st.cur != null && chooser) st.mine[st.cur].stats.forEach(s2 => { const bt = document.createElement('button'); bt.textContent = `${s2.name} ${s2.val}`; bt.onclick = () => this.play(s2.name); pk.appendChild(bt); });
-        if (st.cur != null && !chooser) { const bt = document.createElement('button'); bt.className = 'cards-btn'; bt.textContent = 'Lock in this card'; bt.onclick = () => this.play(null); act.appendChild(bt); }
-        E('.bt-msg').innerHTML = (chooser ? '<b>You choose the stat this round.</b> ' : `<b>${esc(this.opp)} chooses the stat this round.</b> `) + (st.cur == null ? 'Pick a card from your hand.' : chooser ? 'Now pick the stat.' : 'Lock it in when you\'re ready.');
-      } else if (r < 5) E('.bt-msg').innerHTML = `Locked in. Waiting for ${esc(this.opp)}…`;
-      const hand = E('.bt-hand'); hand.innerHTML = '';
-      st.mine.forEach((c, i) => {
-        const el = cardEl(c, window.innerWidth < 600 ? 96 : 118);
-        if (c.loan) { const t = document.createElement('span'); t.className = 'loan'; t.textContent = 'LOAN'; el.appendChild(t); }
-        if (st.used.includes(i)) el.classList.add('used');
-        else if (!st.my[r]) { if (i === st.cur) el.classList.add('sel'); el.onclick = () => { st.cur = i; this.draw(); }; }
-        hand.appendChild(el);
-      });
-    },
-    play(stat) {
-      const st = this.st, r = st.round; if (st.cur == null || st.my[r]) return;
-      const c = st.mine[st.cur]; st.my[r] = { card: c.id, stat, idx: st.cur }; st.used.push(st.cur); st.cur = null;
-      this.send({ t: 'play', round: r, card: c.id, stat }); beep([520], .05);
-      this.resolve(); this.draw();
-    },
-    resolve() {
-      const st = this.st, r = st.round, a = st.my[r], b = st.opp[r];
-      if (!a || !b || st.revealedRound === r) return;
-      const stat = this.chooserIsMe(r) ? a.stat : b.stat; if (!stat) return;
-      st.revealedRound = r;
-      const mineC = st.mine[a.idx], theirs = cardById(b.card) || makeCard(members()[0], 1);
-      const x = allStats(mineC)[stat], y = allStats(theirs)[stat], res = x > y ? 'w' : x < y ? 'l' : 't';
-      st.results.push(res); st.round++; st.shown = r; st.revealed = true;
-      const E = s => this.E(s);
-      setTimeout(() => {
-        E('.bt-slot.me').innerHTML = ''; E('.bt-slot.me').appendChild(cardEl(mineC, this.w()));
-        E('.bt-slot.cpu').innerHTML = ''; E('.bt-slot.cpu').appendChild(cardEl(theirs, this.w()));
-        E('.bt-pick').innerHTML = ''; E('.bt-hand').querySelectorAll('.tc').forEach(el => { el.onclick = null; el.classList.remove('sel'); });
-        beep(res === 'w' ? [523, 784] : res === 'l' ? [330, 220] : [440, 440], .1);
-        E('.bt-msg').innerHTML = `${esc(stat)}: your <b>${x}</b> vs ${esc(this.opp)}'s <b>${y}</b>: ` + (res === 'w' ? '<span class="w">you win the round!</span>' : res === 'l' ? `<span class="l">${esc(this.opp)} wins the round.</span>` : 'tie.');
-        const you = st.results.filter(z => z === 'w').length, them = st.results.filter(z => z === 'l').length;
-        E('.bt-score').textContent = `You ${you} – ${them} ${this.opp}` + (st.round < 5 ? ` · next: round ${st.round + 1} of 5` : '');
-        E('.bt-dots').innerHTML = Array.from({ length: 5 }, (_, i) => `<i class="${st.results[i] || ''}"></i>`).join('');
-        const act = E('.bt-act'); act.innerHTML = ''; const btn = document.createElement('button'); btn.className = 'cards-btn';
-        if (st.round < 5) { btn.textContent = 'Next round'; btn.onclick = () => { st.revealed = false; this.draw(); }; }
-        else {
-          btn.textContent = 'Rematch'; btn.onclick = () => { this.send({ t: 'go' }); this.start(); };
-          if (you > them) { E('.bt-msg').innerHTML += `<br><b class="w">🏆 You beat ${esc(this.opp)}! +1 🍀 Lucky Pack</b>`; window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'beating ' + this.opp + ' in Card Battle', lucky: true } })); }
-          else if (you < them) E('.bt-msg').innerHTML += `<br><b class="l">${esc(this.opp)} won the battle.</b>`;
-          else E('.bt-msg').innerHTML += '<br><b>Draw! No pack this time.</b>';
-        }
-        act.appendChild(btn);
-      }, 450);
+      else if (m.t === 'team' && Array.isArray(m.ids) && m.ids.length === 3 && m.ids.every(okId)) Full.gotOppTeam(m.ids);
+      else if (m.t === 'begin' && !this.host) Full.beginOnline(Number(m.seed) >>> 0);
+      else if (m.t === 'act' && m.a) Full.gotOppAct(Number(m.turn), m.a);
+      else if (m.t === 'next') Full.gotOppNext(Number(m.turn), Number(m.to));
+      else if (m.t === 'again') { if (Full.over || !Full.mode) Full.pick('online'); }
     }
   };
 
@@ -922,7 +779,7 @@
       Object.assign({ kind: 'sp', key: ranked[1], pp: 5 }, SPECIALS[ranked[1]]),
     ].map(m => Object.assign(m, { max: m.pp }));
     return { c, name: c.token ? 'Pirate Token' : c.member.name, title: c.token ? 'Pirate Token' : c.title, type, hp, max: hp,
-      atk: 30 + Math.round((c.token ? 160 : c.dmg) * .28) + lvl * 3, spd: (a.Skill + a.Clutch) / 2 + Math.random() * 6,
+      atk: 30 + Math.round((c.token ? 160 : c.dmg) * .28) + lvl * 3, spd: (a.Skill + a.Clutch) / 2 + (hash(c.id + '#spd') % 600) / 100,
       moves, boost: 1, shield: false, stun: false };
   }
   const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -994,19 +851,27 @@
   }
 
   const Full = {
+    mode: null, over: false,
     E(s) { return Battle.el().querySelector(s); },
-    pick() {
+    oppName() { return this.mode === 'online' ? PvP.opp : 'The computer'; },
+    foeOf() { return this.mode === 'online' ? esc(PvP.opp) + '\'s ' : 'The foe\'s '; },
+    // ---------- team picking ----------
+    pick(mode) {
+      if (mode === 'online' && !PvP.online()) return PvP.lobby();
       Battle.on = true; FX.stopMusic();
+      this.mode = mode; this.over = false; this.phase = 'pick'; this.myTeam = null; this.oppTeam = null;
       const pool = Battle.deal().concat(Battle.deal()).filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i).slice(0, 6);
-      this.choices = pool; this.chosen = [];
-      Battle.el().innerHTML = `<div class="bt-score">🐉 Pick your team of 3</div>
+      this.chosen = [];
+      Battle.el().innerHTML = `<div class="bt-score">🐉 Pick your team of 3${mode === 'online' ? ' · vs ' + esc(PvP.opp) : ''}</div>
         <p class="bt-msg">Tap 3 cards. The first one you pick goes out first. Types matter: 🔥 beats 🌿❄️ · 💧 beats 🔥🌌 · 🌿 beats 💧⚡ · ❄️ beats 🌿🌌 · ⚡ beats 💧❄️ · 🌌 beats 🔥⚡</p>
-        <div class="fb-team"></div><button class="cards-btn fb-go" disabled>Battle!</button> <button class="cards-btn ghost fb-back">← Back</button>`;
+        <div class="fb-team"></div><button class="cards-btn fb-go" disabled>Pick 3 cards</button> <button class="cards-btn ghost fb-back">${mode === 'online' ? 'Leave' : '← Back'}</button>
+        <p class="bt-msg fb-wait" style="color:var(--ink2)"></p>`;
       const team = this.E('.fb-team');
       pool.forEach((c, i) => {
         const el = cardEl(c, window.innerWidth < 600 ? 104 : 132);
         const t = document.createElement('span'); t.className = 'tybadge'; t.style.background = TYPES[typeOf(c)].c; t.textContent = TYPES[typeOf(c)].e + ' ' + typeOf(c) + (c.loan ? ' · LOAN' : ''); el.appendChild(t);
         el.onclick = () => {
+          if (this.myTeam) return;
           const k = this.chosen.indexOf(i);
           if (k >= 0) this.chosen.splice(k, 1); else if (this.chosen.length < 3) this.chosen.push(i);
           FX.play('select');
@@ -1016,16 +881,44 @@
         };
         team.appendChild(el);
       });
-      this.E('.fb-go').textContent = 'Pick 3 cards';
-      this.E('.fb-go').onclick = () => this.start(this.chosen.map(i => pool[i]));
-      this.E('.fb-back').onclick = () => { Battle.on = false; Battle.intro(); };
+      this.E('.fb-go').onclick = () => {
+        const cards = this.chosen.map(i => pool[i]);
+        if (mode === 'cpu') return this.startCpu(cards);
+        this.myTeam = cards; PvP.send({ t: 'team', ids: cards.map(c => c.id) });
+        this.E('.fb-go').disabled = true; this.E('.fb-go').textContent = 'Team locked ✓';
+        this.E('.fb-wait').textContent = this.oppTeam ? 'Starting…' : `Waiting for ${PvP.opp} to pick their team…`;
+        if (PvP.host && this.oppTeam) this.beginHost();
+      };
+      this.E('.fb-back').onclick = () => { if (mode === 'online') { PvP.close(); this.mode = null; } Battle.intro(); };
+      if (mode === 'online') this.E('.fb-wait').textContent = `${PvP.opp} is picking their team too.`;
     },
-    start(cards) {
+    gotOppTeam(ids) {
+      if (this.phase !== 'pick') return;
+      this.oppTeam = ids;
+      const w = this.E('.fb-wait'); if (w) w.textContent = this.myTeam ? 'Starting…' : `${PvP.opp} has picked their team. Your turn!`;
+      if (PvP.host && this.myTeam) this.beginHost();
+    },
+    beginHost() { const seed = (Math.random() * 4294967296) >>> 0; PvP.send({ t: 'begin', seed }); this.beginOnline(seed); },
+    beginOnline(seed) {
+      if (this.phase !== 'pick' || !this.myTeam || !this.oppTeam) return;
       const ms = members();
-      this.me = cards.map(fighter);
-      this.cpu = cards.map(c => { const lvl = Math.max(0, Math.min(5, (c.token ? 5 : c.lvl) + Math.floor(Math.random() * 3) - 1)), rar = RAR[lvl];
-        return fighter(makeCard(ms[Math.floor(Math.random() * ms.length)], rar.from + Math.floor(Math.random() * (rar.to - rar.from + 1)))); });
+      const opp = this.oppTeam.map(id => cardById(id) || makeCard(ms[0], 1));
+      this.start(this.myTeam, opp, seed);
+    },
+    startCpu(cards) {
+      const ms = members();
+      const opp = cards.map(c => { const lvl = Math.max(0, Math.min(5, (c.token ? 5 : c.lvl) + Math.floor(Math.random() * 3) - 1)), rar = RAR[lvl];
+        return makeCard(ms[Math.floor(Math.random() * ms.length)], rar.from + Math.floor(Math.random() * (rar.to - rar.from + 1))); });
+      this.start(cards, opp, null);
+    },
+    // ---------- the battle ----------
+    start(myCards, oppCards, seed) {
+      this.phase = 'battle';
+      // online: both screens use the same random numbers, so every roll comes out the same
+      const r = seed != null ? rng(seed) : null; this.R = r || Math.random;
+      this.me = myCards.map(fighter); this.op = oppCards.map(fighter);
       this.mi = 0; this.ci = 0; this.busy = false; this.over = false; this.warned = false;
+      this.turnNo = 0; this.myAct = null; this.oppActs = {}; this.needMine = false; this.needOpp = false; this.oppNext = {};
       Battle.el().innerHTML = `<div class="fb">
         <div class="fb-field">
           <div class="fb-audio"><button class="fb-mus" title="Music"></button><button class="fb-sfx" title="Sound effects"></button></div>
@@ -1039,29 +932,33 @@
       sb.onclick = () => { FX.sfxOn = !FX.sfxOn; LS.set('mb_battle_sfx', FX.sfxOn); sync(); };
       sync(); FX.startMusic();
       this.place('o', true); FX.play('sendOut');
-      this.say(`The computer wants to battle! It sends out <b>${esc(this.cpu[0].name)}</b>!`, 1300)
+      this.say(`${esc(this.oppName())} wants to battle! ${this.mode === 'online' ? 'They send' : 'It sends'} out <b>${esc(this.op[0].name)}</b>!`, 1300)
         .then(() => { this.place('m', true); FX.play('sendOut'); return this.say(`Go, <b>${esc(this.me[0].name)}</b>!`, 900); })
         .then(() => this.menu());
     },
     cardW(side) { const small = window.innerWidth < 600; return side === 'o' ? (small ? 96 : 130) : (small ? 112 : 150); },
     place(side, enter) {
-      const f = side === 'm' ? this.me[this.mi] : this.cpu[this.ci];
-      const slot = this.E('.fb-slot.' + side); slot.innerHTML = '';
+      const f = side === 'm' ? this.me[this.mi] : this.op[this.ci];
+      const slot = this.E('.fb-slot.' + side); if (!slot) return; slot.innerHTML = '';
       const el = cardEl(f.c, this.cardW(side)); el.classList.add('fb-card'); if (enter) el.classList.add('enter'); slot.appendChild(el);
       this.hud(side);
     },
     hud(side) {
-      const team = side === 'm' ? this.me : this.cpu, f = team[side === 'm' ? this.mi : this.ci], pct = Math.max(0, f.hp / f.max * 100);
+      const team = side === 'm' ? this.me : this.op, f = team[side === 'm' ? this.mi : this.ci], pct = Math.max(0, f.hp / f.max * 100);
       const fx = [f.boost > 1 ? '💘 charged' : '', f.shield ? '🛡 shielded' : '', f.stun ? '💫 stunned' : ''].filter(Boolean).join(' · ');
-      this.E('.fb-hud.' + side).innerHTML = `<b>${esc(f.title)}</b><span class="ty">${TYPES[f.type].e} ${f.type}</span>
+      const h = this.E('.fb-hud.' + side); if (!h) return;
+      h.innerHTML = `<b>${esc(f.title)}</b><span class="ty">${TYPES[f.type].e} ${f.type}</span>
         <div class="fb-hp"><i class="${pct < 25 ? 'low' : pct < 55 ? 'mid' : ''}" style="width:${pct}%"></i></div>
         <small>${Math.max(0, Math.ceil(f.hp))} / ${f.max} HP</small>${fx ? `<div class="fx">${fx}</div>` : ''}
         <div class="fb-bench">${team.map(x => `<i class="${x.hp <= 0 ? 'out' : ''}"></i>`).join('')}</div>`;
     },
     async say(t, ms) { const l = this.E('.fb-log'); if (l) l.innerHTML = t; await wait(ms || 1100); },
+    clearButtons() { const a = this.E('.fb-moves'), b = this.E('.fb-extra'); if (a) a.innerHTML = ''; if (b) b.innerHTML = ''; },
     menu() {
-      if (this.over) return;
-      const f = this.me[this.mi], box = this.E('.fb-moves'), extra = this.E('.fb-extra'); box.innerHTML = ''; extra.innerHTML = '';
+      if (this.over || this.busy) return;
+      if (this.needMine) return this.switchMenu(true);
+      if (this.needOpp) { this.clearButtons(); this.E('.fb-log').innerHTML = `Waiting for ${esc(PvP.opp)} to send out their next card…`; return; }
+      const f = this.me[this.mi], box = this.E('.fb-moves'), extra = this.E('.fb-extra'); this.clearButtons();
       this.E('.fb-log').innerHTML = `What will <b>${esc(f.name)}</b> do?`;
       if (f.hp / f.max < .25 && !this.warned) { this.warned = true; FX.play('lowhp'); }
       f.moves.forEach((m, i) => {
@@ -1069,29 +966,44 @@
         b.style.background = m.kind === 'sp' ? '#343a40' : TYPES[m.type].c;
         b.innerHTML = `<b>${esc(m.name)}</b><span>${esc(m.d)}</span><em>PP ${m.pp}/${m.max}</em>`;
         b.disabled = m.pp <= 0;
-        b.onclick = () => { if (!this.busy) { FX.play('select'); this.turn({ kind: 'move', i }); } };
+        b.onclick = () => { if (!this.busy) { FX.play('select'); this.choose({ kind: 'move', i }); } };
         box.appendChild(b);
       });
       if (f.moves.every(m => m.pp <= 0)) { const b = document.createElement('button'); b.className = 'fb-move'; b.style.background = '#868e96';
-        b.innerHTML = '<b>Struggle</b><span>Out of PP! Weak hit with recoil</span>'; b.onclick = () => { if (!this.busy) this.turn({ kind: 'move', i: -1 }); }; box.appendChild(b); }
+        b.innerHTML = '<b>Struggle</b><span>Out of PP! Weak hit with recoil</span>'; b.onclick = () => { if (!this.busy) this.choose({ kind: 'move', i: -1 }); }; box.appendChild(b); }
       const bench = this.me.filter((x, i) => i !== this.mi && x.hp > 0);
       const sw = document.createElement('button'); sw.className = 'cards-btn ghost'; sw.textContent = bench.length ? '🔄 Switch card' : 'No one left to switch to';
       sw.disabled = !bench.length; sw.onclick = () => { if (!this.busy) this.switchMenu(); }; extra.appendChild(sw);
     },
     switchMenu(forced) {
-      const box = this.E('.fb-moves'), extra = this.E('.fb-extra'); box.innerHTML = ''; extra.innerHTML = '';
+      const box = this.E('.fb-moves'), extra = this.E('.fb-extra'); this.clearButtons();
       this.E('.fb-log').innerHTML = forced ? 'Who goes out next?' : 'Switch to who?';
       this.me.forEach((x, i) => {
         if (i === this.mi || x.hp <= 0) return;
         const b = document.createElement('button'); b.className = 'fb-move'; b.style.background = TYPES[x.type].c;
         b.innerHTML = `<b>${esc(x.name)}</b><span>${TYPES[x.type].e} ${x.type} · ${Math.ceil(x.hp)}/${x.max} HP</span>`;
-        b.onclick = () => { if (this.busy) return; if (forced) this.sendNext(i); else this.turn({ kind: 'switch', to: i }); };
+        b.onclick = () => { if (this.busy) return; if (forced) this.sendNext(i); else this.choose({ kind: 'switch', to: i }); };
         box.appendChild(b);
       });
       if (!forced) { const b = document.createElement('button'); b.className = 'cards-btn ghost'; b.textContent = '← Back to moves'; b.onclick = () => this.menu(); extra.appendChild(b); }
     },
+    // you picked what to do this turn
+    choose(a) {
+      if (this.mode === 'cpu') return this.resolve(a, this.cpuChoice());
+      this.myAct = a; this.clearButtons();
+      PvP.send({ t: 'act', turn: this.turnNo, a });
+      this.E('.fb-log').innerHTML = `Waiting for ${esc(PvP.opp)}…`;
+      if (this.oppActs[this.turnNo]) this.resolve(a, this.oppActs[this.turnNo]);
+    },
+    gotOppAct(turn, a) {
+      if (this.phase !== 'battle' || this.over) return;
+      const ok = (a.kind === 'move' && Number.isInteger(a.i) && a.i >= -1 && a.i <= 3) || (a.kind === 'switch' && Number.isInteger(a.to) && a.to >= 0 && a.to <= 2);
+      if (!ok) return;
+      this.oppActs[turn] = a;
+      if (turn === this.turnNo && this.myAct && !this.busy) this.resolve(this.myAct, a);
+    },
     cpuChoice() {
-      const f = this.cpu[this.ci], foe = this.me[this.mi], ok = f.moves.map((m, i) => ({ m, i })).filter(o => o.m.pp > 0);
+      const f = this.op[this.ci], foe = this.me[this.mi], ok = f.moves.map((m, i) => ({ m, i })).filter(o => o.m.pp > 0);
       if (!ok.length) return { kind: 'move', i: -1 };
       const has = k => ok.find(o => o.m.kind === 'sp' && o.m.key === k);
       if (has('Clutch') && f.hp / f.max < .4 && Math.random() < .8) return { kind: 'move', i: has('Clutch').i };
@@ -1099,40 +1011,77 @@
       if (has('Aura') && !f.shield && Math.random() < .2) return { kind: 'move', i: has('Aura').i };
       const attacks = ok.filter(o => !o.m.status);
       if (!attacks.length) return { kind: 'move', i: ok[0].i };
-      // like a player: prefer the strong type move when it's effective
       const score = o => (o.m.pow || 1.1) * (o.m.kind === 'sp' && o.m.key === 'Brain Cells' ? 1 : eff(f.type, foe.type)) * (o.m.acc || .9) * (.8 + Math.random() * .4);
       attacks.sort((a, b) => score(b) - score(a));
       return { kind: 'move', i: attacks[0].i };
     },
-    async turn(mine) {
-      this.busy = true; this.E('.fb-moves').innerHTML = ''; this.E('.fb-extra').innerHTML = '';
-      const theirs = this.cpuChoice(), me = this.me[this.mi], cp = this.cpu[this.ci];
-      if (mine.kind === 'switch') { await this.doSwitch(mine.to); await this.act('o', theirs); }
-      else {
-        const pri = (f, m) => m.i >= 0 && f.moves[m.i].kind === 'sp' && f.moves[m.i].key === 'Skill' ? 1 : 0;
-        const a = { side: 'm', m: mine, f: me }, b = { side: 'o', m: theirs, f: cp };
-        const pa = pri(me, mine), pb = pri(cp, theirs);
-        const order = pa !== pb ? (pa > pb ? [a, b] : [b, a]) : (me.spd >= cp.spd ? [a, b] : [b, a]);
-        for (const o of order) { if (this.over) break; const f = o.side === 'm' ? this.me[this.mi] : this.cpu[this.ci]; if (f !== o.f || f.hp <= 0) continue; await this.act(o.side, o.m); }
+    // both sides have chosen: play out the turn the same way on both screens
+    async resolve(mine, theirs) {
+      if (this.busy) return;
+      this.busy = true; this.clearButtons();
+      // "first" = host's side when it's a tie, so both screens agree
+      const iAmFirst = this.mode === 'online' ? PvP.host : true;
+      const A = { side: 'm', a: mine }, B = { side: 'o', a: theirs };
+      const tiePair = iAmFirst ? [A, B] : [B, A];
+      // switches happen before attacks
+      for (const o of tiePair) if (o.a.kind === 'switch') await this.doSwitch(o.side, o.a.to);
+      const movers = [A, B].filter(o => o.a.kind === 'move');
+      const pri = o => { const f = o.side === 'm' ? this.me[this.mi] : this.op[this.ci]; return o.a.i >= 0 && f.moves[o.a.i].kind === 'sp' && f.moves[o.a.i].key === 'Skill' ? 1 : 0; };
+      const spd = o => (o.side === 'm' ? this.me[this.mi] : this.op[this.ci]).spd;
+      movers.sort((x, y) => pri(y) - pri(x) || spd(y) - spd(x) || tiePair.indexOf(x) - tiePair.indexOf(y));
+      const actors = movers.map(o => ({ o, f: o.side === 'm' ? this.me[this.mi] : this.op[this.ci] }));
+      for (const { o, f } of actors) {
+        if (this.over) break;
+        const cur = o.side === 'm' ? this.me[this.mi] : this.op[this.ci];
+        if (cur !== f || f.hp <= 0) continue;
+        await this.act(o.side, o.a);
       }
-      this.busy = false;
-      if (!this.over) { if (this.me[this.mi].hp <= 0) this.switchMenu(true); else this.menu(); }
+      this.turnNo++; this.myAct = null; this.busy = false;
+      if (this.over) return;
+      if (this.mode === 'online') {
+        this.needMine = this.me[this.mi].hp <= 0;
+        this.needOpp = this.op[this.ci].hp <= 0;
+        if (this.needOpp && this.oppNext[this.turnNo] != null) this.applyOppNext(this.oppNext[this.turnNo]);
+      } else this.needMine = this.me[this.mi].hp <= 0;
+      this.menu();
     },
-    async doSwitch(i) {
-      await this.say(`${esc(this.me[this.mi].name)}, come back!`, 700);
-      this.mi = i; this.warned = false; this.place('m', true); FX.play('sendOut'); await this.say(`Go, <b>${esc(this.me[i].name)}</b>!`, 900);
+    async doSwitch(side, i) {
+      if (side === 'm') {
+        await this.say(`${esc(this.me[this.mi].name)}, come back!`, 700);
+        this.mi = i; this.warned = false; this.place('m', true); FX.play('sendOut'); await this.say(`Go, <b>${esc(this.me[i].name)}</b>!`, 900);
+      } else {
+        await this.say(`${esc(this.oppName())} withdrew ${esc(this.op[this.ci].name)}!`, 700);
+        this.ci = i; this.place('o', true); FX.play('sendOut'); await this.say(`${esc(this.oppName())} sent out <b>${esc(this.op[i].name)}</b>!`, 900);
+      }
     },
-    async sendNext(i) { this.busy = true; this.mi = i; this.warned = false; this.place('m', true); FX.play('sendOut'); await this.say(`Go, <b>${esc(this.me[i].name)}</b>!`, 900); this.busy = false; this.menu(); },
+    async sendNext(i) {
+      this.busy = true; this.mi = i; this.warned = false; this.needMine = false;
+      if (this.mode === 'online') PvP.send({ t: 'next', turn: this.turnNo, to: i });
+      this.place('m', true); FX.play('sendOut'); await this.say(`Go, <b>${esc(this.me[i].name)}</b>!`, 900);
+      this.busy = false; this.menu();
+    },
+    gotOppNext(turn, to) {
+      if (this.phase !== 'battle' || this.over || !(to >= 0 && to <= 2)) return;
+      this.oppNext[turn] = to;
+      if (this.needOpp && turn === this.turnNo && !this.busy) this.applyOppNext(to);
+    },
+    async applyOppNext(to) {
+      if (!this.op[to] || this.op[to].hp <= 0) return;
+      this.needOpp = false; this.busy = true;
+      this.ci = to; this.place('o', true); FX.play('sendOut');
+      await this.say(`${esc(PvP.opp)} sent out <b>${esc(this.op[to].name)}</b>!`, 1000);
+      this.busy = false; this.menu();
+    },
     dmg(att, def, mult, ignoreType, type) {
       const e = ignoreType ? 1 : eff(type || att.type, def.type);
-      let d = att.atk * mult * e * att.boost * (.85 + Math.random() * .15);
-      const crit = Math.random() < .0625; if (crit) d *= 1.5;
+      let d = att.atk * mult * e * att.boost * (.85 + this.R() * .15);
+      const crit = this.R() < .0625; if (crit) d *= 1.5;
       att.boost = 1;
       if (def.shield) { d *= .5; def.shield = false; }
       return { d: Math.max(1, Math.round(d)), e, crit };
     },
     async hit(side, r, type, quiet) {
-      const tSide = side === 'm' ? 'o' : 'm', t = tSide === 'm' ? this.me[this.mi] : this.cpu[this.ci];
+      const tSide = side === 'm' ? 'o' : 'm', t = tSide === 'm' ? this.me[this.mi] : this.op[this.ci];
       t.hp = Math.max(0, t.hp - r.d);
       const el = this.E('.fb-slot.' + tSide + ' .fb-card');
       if (type) { FX.play(type); burst(el, TYPES[type].e, 9); await wait(260); }
@@ -1145,12 +1094,12 @@
       else if (r.e < 1) await this.say('It\'s not very effective…', 850);
     },
     async act(side, choice) {
-      const me = side === 'm', f = me ? this.me[this.mi] : this.cpu[this.ci], foe = me ? this.cpu[this.ci] : this.me[this.mi];
-      const who = (me ? '' : 'The foe\'s ') + '<b>' + esc(f.name) + '</b>';
+      const me = side === 'm', f = me ? this.me[this.mi] : this.op[this.ci], foe = me ? this.op[this.ci] : this.me[this.mi];
+      const who = (me ? '' : this.foeOf()) + '<b>' + esc(f.name) + '</b>';
       if (f.stun) { f.stun = false; this.hud(side); FX.play('stun'); await this.say(`${who} is stunned and can't move! 💫`); return; }
       const el = this.E('.fb-slot.' + side + ' .fb-card');
       const lunge = async () => { FX.play('whoosh'); if (el) { el.classList.add(me ? 'lunge-r' : 'lunge-l'); await wait(200); el.classList.remove('lunge-r', 'lunge-l'); } };
-      if (choice.i < 0) {   // Struggle
+      if (choice.i < 0 || !f.moves[choice.i]) {   // Struggle
         await this.say(`${who} has no moves left and used <b>Struggle</b>!`, 700);
         await lunge(); const r = this.dmg(f, foe, .5, true); await this.hit(side, r, null, true);
         f.hp = Math.max(0, f.hp - Math.round(f.max * .12)); this.hud(side); await this.say(`${esc(f.name)} is hurt by recoil!`, 800);
@@ -1159,7 +1108,7 @@
       const m = f.moves[choice.i]; m.pp = Math.max(0, m.pp - 1);
       await this.say(`${who} used <b>${esc(m.name)}</b>!`, 700);
       if (m.kind !== 'sp') {
-        if (Math.random() > m.acc) { await lunge(); FX.play('miss'); await this.say(`${esc(foe.name)} dodged it! The attack missed!`); return; }
+        if (this.R() > m.acc) { await lunge(); FX.play('miss'); await this.say(`${esc(foe.name)} dodged it! The attack missed!`); return; }
         await lunge(); await this.hit(side, this.dmg(f, foe, m.pow, false, m.type), m.type);
       } else {
         const k = m.key, fs = side;
@@ -1167,39 +1116,40 @@
         else if (k === 'Aura') { f.shield = true; f.hp = Math.min(f.max, f.hp + f.max * .1); FX.play('shield'); burst(el, '✨', 8); this.hud(fs); await this.say(`${esc(f.name)} is surrounded by aura! 🛡`); }
         else if (k === 'Clutch') { f.hp = Math.min(f.max, f.hp + f.max * .35); FX.play('heal'); burst(el, '💚', 8); this.hud(fs); await this.say(`${esc(f.name)} clutched up and restored HP!`); }
         else if (k === 'Rage') { await lunge(); const r = this.dmg(f, foe, 1.5, false); await this.hit(side, r, f.type); f.hp = Math.max(0, f.hp - Math.round(r.d * .2)); this.hud(fs); await this.say(`${esc(f.name)} is hurt by recoil! 😤`, 900); }
-        else if (k === 'Yapping') { let n = 0; for (let i = 0; i < 3; i++) { if (foe.hp <= 0) break; if (Math.random() < .75) { n++; await lunge(); const r = this.dmg(f, foe, .42, false); await this.hit(side, r, i === 0 ? f.type : null, true); } } await this.say(n ? `Hit ${n} time${n > 1 ? 's' : ''}!` : 'All the yapping missed!'); }
-        else if (k === 'Brain Cells') { await lunge(); const r = this.dmg(f, foe, 1.05, true); await this.hit(side, r, 'Cosmic'); if (Math.random() < .3 && foe.hp > 0) { foe.stun = true; FX.play('stun'); this.hud(me ? 'o' : 'm'); await this.say(`${esc(foe.name)} is confused and stunned! 💫`); } }
-        else if (k === 'Luck') { await lunge(); if (Math.random() < .5) { await this.say('🍀 Lucky!', 600); await this.hit(side, this.dmg(f, foe, 2, false), f.type); } else { await this.hit(side, this.dmg(f, foe, .3, false), null, true); await this.say('…it was a dud. 🥲'); } }
+        else if (k === 'Yapping') { let n = 0; for (let i = 0; i < 3; i++) { if (foe.hp <= 0) break; if (this.R() < .75) { n++; await lunge(); const r = this.dmg(f, foe, .42, false); await this.hit(side, r, i === 0 ? f.type : null, true); } } await this.say(n ? `Hit ${n} time${n > 1 ? 's' : ''}!` : 'All the yapping missed!'); }
+        else if (k === 'Brain Cells') { await lunge(); const r = this.dmg(f, foe, 1.05, true); await this.hit(side, r, 'Cosmic'); if (this.R() < .3 && foe.hp > 0) { foe.stun = true; FX.play('stun'); this.hud(me ? 'o' : 'm'); await this.say(`${esc(foe.name)} is confused and stunned! 💫`); } }
+        else if (k === 'Luck') { await lunge(); if (this.R() < .5) { await this.say('🍀 Lucky!', 600); await this.hit(side, this.dmg(f, foe, 2, false), f.type); } else { await this.hit(side, this.dmg(f, foe, .3, false), null, true); await this.say('…it was a dud. 🥲'); } }
         else if (k === 'Skill') { await lunge(); await this.hit(side, this.dmg(f, foe, .85, false), f.type); }
       }
       await this.faints();
     },
     async faints() {
-      const cp = this.cpu[this.ci], me = this.me[this.mi];
-      if (cp.hp <= 0) {
-        const el = this.E('.fb-slot.o .fb-card'); if (el) el.classList.add('faint'); FX.play('faint');
-        await this.say(`The foe's <b>${esc(cp.name)}</b> fainted!`, 1200);
-        const next = this.cpu.findIndex(x => x.hp > 0);
-        if (next < 0) return this.end(true);
-        this.ci = next; this.place('o', true); FX.play('sendOut'); await this.say(`The computer sends out <b>${esc(this.cpu[next].name)}</b>!`);
-      }
-      if (me.hp <= 0 && !this.over) {
-        const el = this.E('.fb-slot.m .fb-card'); if (el) el.classList.add('faint'); FX.play('faint');
-        await this.say(`<b>${esc(me.name)}</b> fainted!`, 1200);
-        if (!this.me.some(x => x.hp > 0)) return this.end(false);
+      const cp = this.op[this.ci], me = this.me[this.mi];
+      if (cp.hp <= 0 && !cp.down) { cp.down = true; const el = this.E('.fb-slot.o .fb-card'); if (el) el.classList.add('faint'); FX.play('faint'); await this.say(`${this.foeOf()}<b>${esc(cp.name)}</b> fainted!`, 1200); }
+      if (me.hp <= 0 && !me.down) { me.down = true; const el = this.E('.fb-slot.m .fb-card'); if (el) el.classList.add('faint'); FX.play('faint'); await this.say(`<b>${esc(me.name)}</b> fainted!`, 1200); }
+      const myAlive = this.me.some(x => x.hp > 0), opAlive = this.op.some(x => x.hp > 0);
+      if (!myAlive || !opAlive) return this.end(!myAlive && !opAlive ? 'draw' : !opAlive ? 'win' : 'lose');
+      if (cp.hp <= 0 && this.mode === 'cpu') {
+        const next = this.op.findIndex(x => x.hp > 0);
+        this.ci = next; this.place('o', true); FX.play('sendOut'); await this.say(`The computer sends out <b>${esc(this.op[next].name)}</b>!`);
       }
     },
-    async end(won) {
-      this.over = true; this.E('.fb-moves').innerHTML = ''; this.E('.fb-extra').innerHTML = ''; FX.fadeMusic();
-      if (won) { FX.play('win'); await this.say('🏆 <b>You defeated the computer!</b> +1 🍀 Lucky Pack', 400);
-        window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'winning a Full Battle', lucky: true } })); }
-      else { FX.play('lose'); await this.say('💀 <b>You\'re out of usable cards!</b> You blacked out…', 400); }
+    async end(result) {
+      this.over = true; this.busy = false; this.phase = 'over'; this.clearButtons(); FX.fadeMusic();
+      const opp = esc(this.oppName());
+      if (result === 'win') { FX.play('win'); await this.say(`🏆 <b>You defeated ${this.mode === 'online' ? opp : 'the computer'}!</b> +1 🍀 Lucky Pack`, 400);
+        window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: this.mode === 'online' ? 'beating ' + PvP.opp + ' in Card Battle' : 'winning a Card Battle', lucky: true } })); }
+      else if (result === 'draw') { await this.say('Both sides are out of cards! It\'s a draw.', 400); }
+      else { FX.play('lose'); await this.say(`💀 <b>You're out of usable cards!</b> ${this.mode === 'online' ? opp + ' wins.' : 'You blacked out…'}`, 400); }
       const box = this.E('.fb-moves');
-      const a = document.createElement('button'); a.className = 'fb-move'; a.style.background = '#2f9e44'; a.innerHTML = '<b>Play again</b><span>Pick a new team</span>'; a.onclick = () => this.pick();
-      const b = document.createElement('button'); b.className = 'fb-move'; b.style.background = '#495057'; b.innerHTML = '<b>Back</b><span>Other battle modes</span>'; b.onclick = () => { Battle.on = false; Battle.intro(); };
+      const a = document.createElement('button'); a.className = 'fb-move'; a.style.background = '#2f9e44';
+      a.innerHTML = this.mode === 'online' ? '<b>Rematch</b><span>Both pick new teams</span>' : '<b>Play again</b><span>Pick a new team</span>';
+      a.onclick = () => { if (this.mode === 'online') { if (!PvP.online()) return PvP.lobby(PvP.opp + ' left.'); PvP.send({ t: 'again' }); this.pick('online'); } else this.pick('cpu'); };
+      const b = document.createElement('button'); b.className = 'fb-move'; b.style.background = '#495057';
+      b.innerHTML = this.mode === 'online' ? '<b>Leave</b><span>Back to battle menu</span>' : '<b>Back</b><span>Battle menu</span>';
+      b.onclick = () => { if (this.mode === 'online') { PvP.close(); this.mode = null; } Battle.intro(); };
       box.append(a, b);
-    },
-    stop() { FX.stopMusic(); }
+    }
   };
 
   function tiltIf(c) { if (matchMedia('(hover: hover)').matches) tilt(c); }
