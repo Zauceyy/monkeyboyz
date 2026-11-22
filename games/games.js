@@ -284,7 +284,9 @@
     document.getElementById('gameCards').style.display = which === 'cards' ? '' : 'none';
     document.getElementById('gameWhack').style.display = which === 'whack' ? '' : 'none';
     document.getElementById('gameRace').style.display = which === 'race' ? '' : 'none';
-    const B = window.MBBlocks, F = window.MBFlash, K = window.MBCards, W = window.MBWhack, RC = window.MBRace;
+    document.getElementById('gameDle').style.display = which === 'dle' ? '' : 'none';
+    const B = window.MBBlocks, F = window.MBFlash, K = window.MBCards, W = window.MBWhack, RC = window.MBRace, DL = window.MBDle;
+    if (which !== 'dle' && DL) DL.hide();
     if (which !== 'flash' && F) F.hide();
     if (which !== 'cards' && K) K.hide();
     if (which !== 'whack' && W) W.hide();
@@ -298,6 +300,7 @@
     else if (which === 'cards') { if (K) K.show(); }
     else if (which === 'whack') { if (W) W.show(); }
     else if (which === 'race') { if (RC) RC.show(); }
+    else if (which === 'dle') { if (DL) DL.show(); }
     else if (B) B.start();
   }
   window.MBGames = {
@@ -312,11 +315,12 @@
         if (window.MBCards) MBCards.init(document.getElementById('cardsRoot'));
         if (window.MBWhack) MBWhack.init(document.getElementById('whackRoot'));
         if (window.MBRace) MBRace.init(document.getElementById('raceRoot'));
+        if (window.MBDle) MBDle.init(document.getElementById('dleRoot'));
         document.querySelectorAll('.game-pick').forEach(b => b.onclick = () => pick(b.dataset.game));
       }
       pick(current);
     },
-    hide() { Flappy.stop(); Clicker.stop(); if (window.MBBlocks) MBBlocks.stop(); if (window.MBFlash) MBFlash.hide(); if (window.MBCards) MBCards.hide(); if (window.MBWhack) MBWhack.hide(); if (window.MBRace) MBRace.hide(); }
+    hide() { Flappy.stop(); Clicker.stop(); if (window.MBBlocks) MBBlocks.stop(); if (window.MBFlash) MBFlash.hide(); if (window.MBCards) MBCards.hide(); if (window.MBWhack) MBWhack.hide(); if (window.MBRace) MBRace.hide(); if (window.MBDle) MBDle.hide(); }
   };
   document.addEventListener('visibilitychange', () => { if (document.hidden) window.MBGames.hide(); });
 })();
