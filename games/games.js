@@ -305,7 +305,7 @@
       if (!inited) {
         inited = true;
         Board.init(document.getElementById('flappyBoard'));
-        Flappy.init(document.getElementById('flappyCanvas'), { onOver: s => { Board.offer(s); if (s >= 10) window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'scoring ' + s + ' in Flappy Monkey', lucky: true } })); } });
+        Flappy.init(document.getElementById('flappyCanvas'), { onOver: s => { Board.offer(s); if (s >= 10) window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'scoring ' + s + ' in Flappy Monkey', lucky: true, count: Math.floor(s / 10) } })); } });
         Clicker.init(document.getElementById('clickerRoot'));
         if (window.MBBlocks) MBBlocks.init(document.getElementById('blocksRoot'));
         if (window.MBFlash) MBFlash.init(document.getElementById('flashRoot'));

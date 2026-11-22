@@ -562,7 +562,7 @@
         <div class="packinfo"><span>🍀 Lucky: <b class="lucky-n">0</b></span><button class="cards-btn lucky-btn" style="background:#40c057;color:#fff">Open Lucky Pack</button></div>
         <div class="cards-prog"><small class="prog-t"></small><div class="bar"><i class="prog-bar"></i></div></div>
       </div>
-      <p class="cards-odds" style="margin-top:12px">Every member has 100 cards: #1–50 Common · 51–75 Uncommon · 76–88 Holo Rare · 89–95 Shiny Epic · 96–99 Legendary · #100 Golden one-of-one · 🏴‍☠️ Pirate Token: 1 in 137,500. 3 free packs every 3 minutes (saves up to 10). 🍀 <b>Lucky Packs</b> have way better odds and always have a Rare or better: win them in Card Battle, Whack-a-Monkey, the Monkey Race, Flappy Monkey (10+) and Banana Blocks (10+ lines).</p>
+      <p class="cards-odds" style="margin-top:12px">Every member has 100 cards: #1–50 Common · 51–75 Uncommon · 76–88 Holo Rare · 89–95 Shiny Epic · 96–99 Legendary · #100 Golden one-of-one · 🏴‍☠️ Pirate Token: 1 in 137,500. 3 free packs every 3 minutes (saves up to 10). 🍀 <b>Lucky Packs</b> have way better odds and always have a Rare or better: win them in Card Battle, Whack-a-Monkey, the Monkey Race, Flappy Monkey (1 per 10 points) and Banana Blocks (1 per 10 lines).</p>
       <div class="cards-views"><button class="v-col on">📒 Collection</button><button class="v-bt">⚔️ Card Battle</button></div>
       <div class="battle" hidden></div>
       <div class="cards-main">
@@ -1158,9 +1158,9 @@
   function toast(t) { const d = document.createElement('div'); d.className = 'gb-toast'; d.textContent = t; css(); document.body.appendChild(d); setTimeout(() => d.remove(), 4600); }
   // other games call this: window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why, lucky: true, count: 1 } }))
   window.addEventListener('mb:pack', e => {
-    const d = e.detail || {}, n = Math.max(1, Math.min(5, d.count || 1));
+    const d = e.detail || {}, n = Math.max(1, Math.min(50, d.count || 1));
     S = LS.get('mb_cards', S); if (S.lucky == null) S.lucky = 0;
-    if (d.lucky) S.lucky = Math.min(50, S.lucky + n); else S.packs = Math.min(20, (S.packs || 0) + n);
+    if (d.lucky) S.lucky = Math.min(200, S.lucky + n); else S.packs = Math.min(20, (S.packs || 0) + n);
     save(); render();
     toast((d.lucky ? '🍀 +' + n + ' Lucky Pack' + (n > 1 ? 's' : '') : '🃏 +' + n + ' card pack' + (n > 1 ? 's' : '')) + (d.why ? ' for ' + d.why : '') + '! Open in Games → Monkey Cards');
   });

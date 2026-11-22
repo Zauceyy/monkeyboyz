@@ -172,6 +172,7 @@
         full.forEach(y => { b.grid.splice(y, 1); b.grid.unshift(Array(COLS).fill(null)); });
         const before = b.level, n = full.length;
         b.lines += n; b.score += [0, 100, 300, 500, 800][n] * b.level;
+        if (o.onTen && Math.floor(b.lines / 10) > Math.floor((b.lines - n) / 10)) o.onTen(Math.floor(b.lines / 10) * 10);
         b.level = Math.floor(b.lines / 10) + 1;
         n === 4 ? Audio.sfx('four') : Audio.sfx('clear', n);
         if (b.level > before && !o.versus) setTimeout(() => Audio.sfx('level'), 250);
@@ -367,7 +368,7 @@
     if (mode === 'solo') {
       el.best = q('.bb-best'); el.best.textContent = G.best.toLocaleString();
       const b = new Board({ cv: q('.bb-board'), hold: q('.bb-hold').getContext('2d'), next: q('.bb-next').getContext('2d'),
-        els: { score: q('.bb-score'), lines: q('.bb-lines'), level: q('.bb-level') }, onDead: soloOver });
+        els: { score: q('.bb-score'), lines: q('.bb-lines'), level: q('.bb-level') }, onDead: soloOver, onTen: tenLines });
       G.boards = [b]; G.me = b; b.render();
       overlay(`<h3>Banana Blocks</h3><p>Stack the blocks. Clear lines. Don't let it reach the top.</p><button class="bb-ov-b bb-go">Play</button>`, { '.bb-go': () => countdown(null) });
     } else {
@@ -384,7 +385,7 @@
         G.boards.forEach(x => x.render());
         overlay(`<h3>2 players</h3><p>Same keyboard, side by side. Player 1 uses W A S D, Player 2 uses the arrow keys. First to top out loses.</p><button class="bb-ov-b bb-go">Start</button>`, { '.bb-go': () => countdown(Date.now() % 1e9) });
       } else {
-        const me = mk('p0', { onDead: () => { Net.send({ t: 'ko' }); vsOver(1); }, onAttack: n => Net.send({ t: 'atk', n }) });
+        const me = mk('p0', { onDead: () => { Net.send({ t: 'ko' }); vsOver(1); }, onAttack: n => Net.send({ t: 'atk', n }), onTen: tenLines });
         G.boards = [me]; G.me = me; me.render();
         G.opp = { cv: q('.opp .bb-board'), name: q('.opp .bb-n'), lines: q('.opp .bb-ln'), meter: q('.opp .bb-meter'), snap: '' };
         G.opp.ctx = setupCanvas(G.opp.cv, 18);
@@ -406,10 +407,11 @@
     if (G.mode === 'solo') startPlay();
   }
   function startPlay() { G.state = 'play'; hideOverlay(); if (Audio.musicOn) Audio.startMusic(); }
+  // every 10 lines cleared = 1 Lucky Pack for Monkey Cards
+  function tenLines(total) { window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'hitting ' + total + ' lines in Banana Blocks', lucky: true } })); }
   function soloOver() {
     G.state = 'over'; G.overAt = performance.now(); Audio.stopMusic();
     const s = G.me.score;
-    if (G.me.lines >= 10) window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: 'clearing ' + G.me.lines + ' lines in Banana Blocks', lucky: true } }));
     if (s > G.best) { G.best = s; LS.set('mb_blocks_best', s); el.best.textContent = s.toLocaleString(); }
     overlay(`<h3>Game over</h3><p>Score ${s.toLocaleString()} · Best ${G.best.toLocaleString()}</p><button class="bb-ov-b bb-go">Play again</button>`, { '.bb-go': () => countdown(null) });
   }
