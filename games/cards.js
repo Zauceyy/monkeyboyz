@@ -89,10 +89,13 @@
     return { id: keyOf(m.name) + ':' + v, member: m, v, rar, lvl, theme, photoFx, fun, title, stats, power,
       move: pick(r, MOVES), dmg: 10 * (2 + Math.floor(r() * 8) + lvl * 2), flavor: pick(r, FLAVOR) };
   }
-  const SECRET = { id: 'secret:gerson-bobble', secret: true };
+  const SECRET = { id: 'secret:gerson-bobble', secret: true, lvl: 8 };
+  // the rarest thing in the game: any card in a pack has a 1 in 137,500 chance to be this instead
+  const TOKEN_ODDS = 1 / 137500;
+  const TOKEN = { id: 'secret:pirate-token', token: true, lvl: 9, rar: { id: 'token', name: 'Pirate Token', color: '#f5b700' } };
 
   /* ------------------------------ saved state ------------------------------ */
-  const PACK_EVERY = 30 * 60 * 1000, PACK_MAX = 5;
+  const PACK_EVERY = 3 * 60 * 1000, PACK_MAX = 10, PACKS_PER_DROP = 3;
   let S = LS.get('mb_cards', null);
   if (!S) S = { own: {}, firstAt: {}, packs: 3, last: Date.now(), opened: 0 };
   function save() { LS.set('mb_cards', S); }
@@ -100,11 +103,12 @@
     const now = Date.now();
     if (S.packs >= PACK_MAX) { S.last = now; return; }
     const n = Math.floor((now - S.last) / PACK_EVERY);
-    if (n > 0) { S.packs = Math.min(PACK_MAX, S.packs + n); S.last += n * PACK_EVERY; if (S.packs >= PACK_MAX) S.last = now; save(); }
+    if (n > 0) { S.packs = Math.min(PACK_MAX, S.packs + n * PACKS_PER_DROP); S.last += n * PACK_EVERY; if (S.packs >= PACK_MAX) S.last = now; save(); }
   }
   function addCard(id) { S.own[id] = (S.own[id] || 0) + 1; if (!S.firstAt[id]) S.firstAt[id] = Date.now(); }
   function cardById(id) {
     if (id === SECRET.id) return SECRET;
+    if (id === TOKEN.id) return TOKEN;
     const [k, v] = id.split(':'); const m = members().find(x => keyOf(x.name) === k);
     return m ? makeCard(m, +v) : null;
   }
@@ -143,6 +147,19 @@
   .tc.secret .art{background:radial-gradient(circle,#ffd43b,#f08c00)}
   .tc.secret .art img{animation:tcBob .5s ease-in-out infinite alternate}
   .tc.secret .fl,.tc.secret .sub{color:#ddd}
+  .tc.token{background:linear-gradient(135deg,#7a4a00,#f5b700,#fff3bf,#f5b700,#7a4a00);background-size:300% 300%;animation:tcBg 3s linear infinite, tcGlowGold 1.6s ease-in-out infinite}
+  .tc.token .in{background:linear-gradient(170deg,#3b2400,#1a1000);color:#ffe8a3}
+  .tc.token .art{background:radial-gradient(circle,#fff3bf,#c98a00 70%)}
+  .tc.token .art img{left:6%;right:6%;width:88%;height:96%;top:2%;bottom:auto;border-radius:50%;object-fit:cover;animation:tcSpinSlow 9s linear infinite}
+  .tc.token .pw{color:#ffd43b}
+  .tc.token .sub,.tc.token .fl,.tc.token .no{color:#e9c46a}
+  .tc.token .sub b{color:#ffd43b}
+  .tc.token .mv{border-top-color:#5c3d00}
+  @keyframes tcGlowGold{0%,100%{box-shadow:0 6px 18px rgba(0,0,0,.3),0 0 10px rgba(245,183,0,.4)}50%{box-shadow:0 6px 18px rgba(0,0,0,.3),0 0 40px rgba(255,200,0,1)}}
+  @keyframes tcSpinSlow{to{transform:rotate(360deg)}}
+  @keyframes tcFall{to{transform:translateY(110vh) rotate(540deg)}}
+  .token-flash{position:fixed;inset:0;z-index:150;pointer-events:none;background:radial-gradient(circle,rgba(255,215,0,.9),rgba(255,140,0,.4) 40%,transparent 70%);animation:tokFlash 1.6s ease-out forwards}
+  @keyframes tokFlash{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
   .tc.missing{background:var(--tile);box-shadow:none;border:2px dashed var(--line)}
   .tc.missing .in{background:transparent;align-items:center;justify-content:center;color:var(--ink2);font-weight:700;font-size:1.4em}
   .tc.back{background:#1d1d1f;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -156,7 +173,25 @@
   @keyframes tcSpin{to{filter:hue-rotate(360deg)}}
   @keyframes tcBob{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}
 
-  .cards-ui{max-width:1000px;margin:0 auto;text-align:left}
+  .cards-ui{max-width:1180px;margin:0 auto;text-align:left}
+  .cards-main{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:20px;align-items:start}
+  .feed{position:sticky;top:70px;background:var(--tile);border-radius:20px;padding:16px;max-height:calc(100vh - 100px);display:flex;flex-direction:column;gap:10px}
+  .feed h4{margin:0;font-size:16px;display:flex;align-items:center;gap:8px}
+  .feed h4 .live{width:8px;height:8px;border-radius:50%;background:#ff3b30;box-shadow:0 0 0 3px rgba(255,59,48,.2);animation:tcSpk 2s ease-in-out infinite}
+  .feed .me{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)}
+  .feed .me input{flex:1;min-width:0;font:inherit;font-size:14px;padding:7px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+  .feed ul{list-style:none;margin:0;padding:0;overflow:auto;display:flex;flex-direction:column;gap:8px;min-height:60px}
+  .feed li{display:grid;grid-template-columns:36px 1fr;gap:9px;align-items:center;font-size:13px;line-height:1.3;cursor:pointer;padding:6px;border-radius:12px}
+  .feed li:hover{background:rgba(128,128,128,.12)}
+  .feed li.fresh{animation:feedIn 1.2s ease}
+  .feed li img{width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--line);box-shadow:0 0 0 2px var(--rc)}
+  .feed li b{font-weight:700}
+  .feed li .c{font-weight:700;color:var(--rc)}
+  .feed li small{display:block;color:var(--ink2);font-size:11px;margin-top:1px}
+  .feed li.big{background:linear-gradient(90deg,rgba(245,183,0,.18),transparent)}
+  .feed .empty{color:var(--ink2);font-size:13px;margin:0}
+  @keyframes feedIn{0%{background:rgba(255,212,59,.6);transform:translateX(-6px)}100%{background:transparent;transform:none}}
+  @media (max-width:860px){ .cards-main{grid-template-columns:1fr} .feed{position:static;max-height:none;order:-1} .feed ul{max-height:260px} }
   .cards-top{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;background:var(--tile);border-radius:20px;padding:16px 18px}
   .cards-top .packinfo{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .cards-top .packinfo b{font-size:22px}
@@ -200,6 +235,17 @@
 
   function cardEl(c, w) {
     const d = document.createElement('div');
+    if (c.token) {
+      d.className = 'tc token holo'; if (w) d.style.setProperty('--w', w + 'px');
+      d.innerHTML = `<div class="in"><div class="top"><span class="nm">Pirate Token</span><span class="pw">∞ PWR</span></div>
+        <div class="art"><img src="games/pirate-token.webp" alt=""></div>
+        <div class="sub"><span>1 in 137,500</span><b>Pirate Token</b></div>
+        <div class="mv"><b>X Marks the Spot</b><span>∞</span></div>
+        <div class="fl">Rarer than anything in the game. If you have this, screenshot it immediately.</div><span class="no">1/137500</span></div><div class="glare"></div>`;
+      for (let i = 0; i < 7; i++) { const s = document.createElement('span'); s.className = 'spk'; s.textContent = '✦';
+        s.style.left = (6 + Math.random() * 82) + '%'; s.style.top = (6 + Math.random() * 50) + '%'; s.style.animationDelay = (Math.random() * 1.8) + 's'; d.appendChild(s); }
+      return d;
+    }
     if (c.secret) {
       d.className = 'tc secret holo'; if (w) d.style.setProperty('--w', w + 'px');
       d.innerHTML = `<div class="in"><div class="top"><span class="nm">Bobblehead Gerson</span><span class="pw" style="color:#ffd43b">??? PWR</span></div>
@@ -249,6 +295,7 @@
 
   /* ------------------------------ packs ------------------------------ */
   function rollCard() {
+    if (Math.random() < TOKEN_ODDS) return TOKEN;
     const ms = members(); const m = ms[Math.floor(Math.random() * ms.length)];
     let x = Math.random(), rar = RAR[0];
     for (const r of RAR.slice().reverse()) { if (x < r.odds) { rar = r; break; } x -= r.odds; }
@@ -278,8 +325,10 @@
         const face = cardEl(c, window.innerWidth < 600 ? 120 : 0);
         if (fresh[i]) { const n = document.createElement('span'); n.className = 'new'; n.textContent = 'NEW'; face.appendChild(n); }
         slot.classList.add('done'); setTimeout(() => { slot.innerHTML = ''; slot.appendChild(face); tilt(face); }, 160);
-        beep(FLIP_SOUND[c.lvl], .07, c.lvl >= 4 ? 'square' : 'triangle');
-        M.hint.textContent = left ? `${left} left to flip` : (cards.some(x => x.lvl >= 3) ? '🔥 Nice pull! Tap a card to see it big.' : 'Tap a card to see it big.');
+        if (c.token) tokenParty(); else beep(FLIP_SOUND[c.lvl], .07, c.lvl >= 4 ? 'square' : 'triangle');
+        Feed.post(c);
+        M.hint.textContent = c.token ? '🏴‍☠️ PIRATE TOKEN!!! That was a 1 in 137,500 pull.'
+          : left ? `${left} left to flip` : (cards.some(x => x.lvl >= 3) ? '🔥 Nice pull! Tap a card to see it big.' : 'Tap a card to see it big.');
       };
       M.row.appendChild(slot);
     });
@@ -298,21 +347,76 @@
     modalEls = { box, row: box.querySelector('.row'), hint: box.querySelector('.hint'), close };
     return modalEls;
   }
+  function tokenParty() {
+    css();
+    const f = document.createElement('div'); f.className = 'token-flash'; document.body.appendChild(f); setTimeout(() => f.remove(), 1700);
+    beep([523, 659, 784, 1047, 784, 1047, 1319, 1568, 2093], .1, 'square');
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) for (let i = 0; i < 40; i++) {
+      const c = document.createElement('div'); c.textContent = ['🏴‍☠️', '💰', '🪙', '✨', '🟡'][i % 5];
+      c.style.cssText = `position:fixed;top:-30px;z-index:160;font-size:24px;pointer-events:none;left:${Math.random() * 100}vw;animation:tcFall ${2.5 + Math.random() * 2.5}s linear ${Math.random() * 1.2}s forwards`;
+      document.body.appendChild(c); setTimeout(() => c.remove(), 6500);
+    }
+    toast('🏴‍☠️ YOU PULLED THE PIRATE TOKEN. 1 in 137,500. Screenshot it!');
+  }
   function bigView(c) {
     const M = modal(); M.row.innerHTML = '';
     const w = Math.min(320, window.innerWidth - 60, (window.innerHeight - 160) * 5 / 7);
     const wrap = document.createElement('div'); wrap.className = 'big';
     const card = cardEl(c, Math.round(w)); wrap.appendChild(card); M.row.appendChild(wrap); tilt(card);
     const n = S.own[c.id] || 0;
-    M.hint.textContent = c.secret ? 'The secret card. Only people who found the easter egg have this.' :
+    M.hint.textContent = c.token ? `🏴‍☠️ The Pirate Token. 1 in 137,500 per card. You have ${n}.` :
+      c.secret ? 'The secret card. Only people who found the easter egg have this.' :
       `${c.rar.name} · #${c.v} of 100 · you have ${n}${n > 1 ? ' (' + (n - 1) + ' extra)' : ''}`;
     M.box.classList.add('show'); document.body.style.overflow = 'hidden';
   }
 
+  /* ------------------------------ rare-pull feed (shared with everyone) ------------------------------ */
+  const Feed = {
+    list: [], seen: null, poll: 0,
+    name() { return String(LS.get('mb_flappy_name', '') || '').slice(0, 16); },
+    device() { let id = null; try { id = localStorage.getItem('mb_voter'); } catch (e) {}
+      if (!id) { id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)); try { localStorage.setItem('mb_voter', id); } catch (e) {} } return id; },
+    load() {
+      if (!window.MB_API) return;
+      fetch(window.MB_API + '?action=pulls').then(r => r.json()).then(d => { if (d.ok) this.show(d.pulls || []); }).catch(() => {});
+    },
+    // only Epic and up get announced
+    post(c) {
+      const rarity = c.token ? 'Pirate Token' : c.secret ? 'Secret' : c.lvl >= 3 ? c.rar.name : null;
+      if (!rarity || !window.MB_API) return;
+      const title = c.token ? 'the Pirate Token' : c.secret ? 'Bobblehead Gerson (secret)' : c.title;
+      const mine = { t: Date.now(), name: this.name() || 'Someone', card: c.id, title, rarity, mine: true };
+      this.show([mine].concat(this.list));
+      fetch(window.MB_API, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'pull', name: this.name(), card: c.id, title, rarity, voter: this.device() }) })
+        .then(r => r.json()).then(d => { if (d.ok && d.pulls) this.show(d.pulls); }).catch(() => {});
+    },
+    show(pulls) {
+      const old = this.seen; this.list = pulls.slice(0, 30);
+      const ul = root && root.querySelector('.feed-list'); if (!ul) return;
+      ul.innerHTML = '';
+      if (!this.list.length) { ul.innerHTML = '<li class="empty" style="cursor:default">Nobody has pulled anything rare yet. Be the first!</li>'; return; }
+      const colors = { Epic: '#a371f7', Legendary: '#f0b232', Mythic: '#ff4fd8', 'Pirate Token': '#f5b700', Secret: '#20c997' };
+      this.list.forEach(p => {
+        const li = document.createElement('li'); li.style.setProperty('--rc', colors[p.rarity] || '#888');
+        const c = cardById(p.card || '');
+        const img = p.rarity === 'Pirate Token' ? 'games/pirate-token.webp' : p.rarity === 'Secret' ? 'games/bobble.jpg' : (c && c.member ? okImg(c.member.img) : '');
+        const ago = Math.max(0, Date.now() - p.t), mins = Math.floor(ago / 60000);
+        const when = mins < 1 ? 'just now' : mins < 60 ? mins + 'm ago' : mins < 1440 ? Math.floor(mins / 60) + 'h ago' : Math.floor(mins / 1440) + 'd ago';
+        li.innerHTML = `<img alt="" src="${esc(img)}"><div><b>${esc(p.name)}</b> pulled <span class="c">${esc(p.title)}</span><small>${esc(p.rarity)} · ${when}</small></div>`;
+        if (['Mythic', 'Pirate Token'].includes(p.rarity)) li.classList.add('big');
+        if (old && !old.has(p.t + p.card)) li.classList.add('fresh');
+        if (c) li.onclick = () => bigView(c);
+        ul.appendChild(li);
+      });
+      this.seen = new Set(this.list.map(p => p.t + p.card));
+    }
+  };
+
   /* ------------------------------ binder ------------------------------ */
   let root = null, filter = 'all', sort = 'new', timerT = 0;
   function owned() { return Object.keys(S.own).filter(id => S.own[id] > 0); }
-  function dupes() { return Object.keys(S.own).reduce((n, id) => n + Math.max(0, S.own[id] - 1), 0); }
+  function dupes() { return Object.keys(S.own).filter(id => !id.startsWith('secret:')).reduce((n, id) => n + Math.max(0, S.own[id] - 1), 0); }
   function render() {
     if (!root) return;
     accrue();
@@ -320,7 +424,7 @@
     const haveReal = have.filter(id => ms.some(m => id.startsWith(keyOf(m.name) + ':'))).length;
     root.querySelector('.packs-n').textContent = S.packs;
     root.querySelector('.open-btn').disabled = S.packs < 1;
-    root.querySelector('.prog-t').textContent = `${haveReal} / ${total} cards collected` + (S.own[SECRET.id] ? ' · 🤫 secret found' : '');
+    root.querySelector('.prog-t').textContent = `${haveReal} / ${total} cards collected` + (S.own[SECRET.id] ? ' · 🤫 secret found' : '') + (S.own[TOKEN.id] ? ' · 🏴‍☠️ PIRATE TOKEN' : '');
     root.querySelector('.prog-bar').style.width = (haveReal / total * 100).toFixed(2) + '%';
     const d = dupes(), tr = root.querySelector('.trade-btn');
     tr.textContent = `Trade 5 extras for a pack (${d} extra${d === 1 ? '' : 's'})`; tr.disabled = d < 5;
@@ -341,7 +445,7 @@
     }
     if (filter === 'all') {
       if (sort === 'new') list.sort((a, b) => (S.firstAt[b.id] || 0) - (S.firstAt[a.id] || 0));
-      if (sort === 'rarity') list.sort((a, b) => (b.secret ? 9 : b.lvl) - (a.secret ? 9 : a.lvl) || (b.power || 0) - (a.power || 0));
+      if (sort === 'rarity') list.sort((a, b) => b.lvl - a.lvl || (b.power || 0) - (a.power || 0));
       if (sort === 'number') list.sort((a, b) => (a.member ? a.member.name : '').localeCompare(b.member ? b.member.name : '') || a.v - b.v);
     }
     if (!list.length) { grid.innerHTML = '<p class="cards-empty">No cards yet. Open a pack to start your collection!</p>'; return; }
@@ -356,7 +460,7 @@
     if (dupes() < 5) return;
     let need = 5;
     // give up the most common extras first
-    const ids = Object.keys(S.own).filter(id => S.own[id] > 1 && id !== SECRET.id).sort((a, b) => (cardById(a) || { lvl: 9 }).lvl - (cardById(b) || { lvl: 9 }).lvl);
+    const ids = Object.keys(S.own).filter(id => S.own[id] > 1 && !id.startsWith('secret:')).sort((a, b) => (cardById(a) || { lvl: 9 }).lvl - (cardById(b) || { lvl: 9 }).lvl);
     for (const id of ids) { while (need && S.own[id] > 1) { S.own[id]--; need--; } if (!need) break; }
     S.packs++; save(); render(); toast('🃏 Traded 5 extras for a new pack!');
   }
@@ -366,7 +470,7 @@
     const t = root.querySelector('.timer');
     if (S.packs >= PACK_MAX) t.textContent = `Pack storage full (${PACK_MAX})`;
     else { const ms = Math.max(0, S.last + PACK_EVERY - Date.now()); const m = Math.floor(ms / 60000), s = Math.floor(ms / 1000) % 60;
-      t.textContent = `Free pack in ${m}:${String(s).padStart(2, '0')}`; }
+      t.textContent = `+${PACKS_PER_DROP} free packs in ${m}:${String(s).padStart(2, '0')}`; }
     const pn = root.querySelector('.packs-n'); if (pn.textContent !== String(S.packs)) render();
   }
   function init(r) {
@@ -376,20 +480,35 @@
         <div class="packinfo"><span>🎁 Packs: <b class="packs-n">0</b></span><button class="cards-btn open-btn">Open a pack</button><span class="timer"></span></div>
         <div class="cards-prog"><small class="prog-t"></small><div class="bar"><i class="prog-bar"></i></div></div>
       </div>
-      <p class="cards-odds" style="margin-top:12px">Every member has 100 cards: #1–50 Common · 51–75 Uncommon · 76–88 Holo Rare · 89–95 Shiny Epic · 96–99 Legendary · #100 Golden one-of-one. A free pack every 30 minutes, plus bonus packs for scoring 10+ in Flappy Monkey or clearing 10+ lines in Banana Blocks.</p>
-      <div class="cards-filters"><span class="chips" style="display:contents"></span>
-        <select class="sort" aria-label="Sort"><option value="new">Newest first</option><option value="rarity">Rarest first</option><option value="number">By member & number</option></select>
+      <p class="cards-odds" style="margin-top:12px">Every member has 100 cards: #1–50 Common · 51–75 Uncommon · 76–88 Holo Rare · 89–95 Shiny Epic · 96–99 Legendary · #100 Golden one-of-one · 🏴‍☠️ Pirate Token: 1 in 137,500. 3 free packs every 3 minutes (saves up to 10), plus bonus packs for scoring 10+ in Flappy Monkey or clearing 10+ lines in Banana Blocks.</p>
+      <div class="cards-main">
+        <div>
+          <div class="cards-filters"><span class="chips" style="display:contents"></span>
+            <select class="sort" aria-label="Sort"><option value="new">Newest first</option><option value="rarity">Rarest first</option><option value="number">By member & number</option></select>
+          </div>
+          <div class="cards-grid"></div>
+          <div style="text-align:center"><button class="cards-btn ghost trade-btn"></button></div>
+        </div>
+        <aside class="feed" aria-label="Rare pulls">
+          <h4><span class="live"></span>Rare pulls</h4>
+          <label class="me">You: <input class="feed-name" maxlength="16" placeholder="Your name"></label>
+          <ul class="feed-list"><li class="empty" style="cursor:default">Loading…</li></ul>
+        </aside>
       </div>
-      <div class="cards-grid"></div>
-      <div style="text-align:center"><button class="cards-btn ghost trade-btn"></button></div>
     </div>`;
+    const nm = root.querySelector('.feed-name'); nm.value = Feed.name();
+    nm.onchange = () => { LS.set('mb_flappy_name', nm.value.trim().slice(0, 16)); };
     root.querySelector('.open-btn').onclick = openPack;
     root.querySelector('.trade-btn').onclick = tradeIn;
     root.querySelector('.sort').onchange = e => { sort = e.target.value; render(); };
     render(); tick();
   }
-  function show() { if (!timerT) timerT = setInterval(tick, 1000); if (root) render(); }
-  function hide() { clearInterval(timerT); timerT = 0; }
+  function show() {
+    if (!timerT) timerT = setInterval(tick, 1000);
+    if (root) render();
+    Feed.load(); clearInterval(Feed.poll); Feed.poll = setInterval(() => Feed.load(), 20000);
+  }
+  function hide() { clearInterval(timerT); timerT = 0; clearInterval(Feed.poll); Feed.poll = 0; }
 
   /* ------------------------------ toasts & bonus packs ------------------------------ */
   function toast(t) { const d = document.createElement('div'); d.className = 'gb-toast'; d.textContent = t; css(); document.body.appendChild(d); setTimeout(() => d.remove(), 4600); }
@@ -429,7 +548,7 @@
     beep([392, 523, 659, 784, 659, 784, 1047], .09, 'square');
     setTimeout(() => { big.remove(); busy = false; }, 3300);
     S = LS.get('mb_cards', S);
-    if (!S.own[SECRET.id]) { addCard(SECRET.id); save(); render(); toast('🤫 You found the secret! The Bobblehead Gerson card is now in your collection.'); }
+    if (!S.own[SECRET.id]) { addCard(SECRET.id); save(); render(); Feed.post(SECRET); toast('🤫 You found the secret! The Bobblehead Gerson card is now in your collection.'); }
     else toast('🎧 Bobble bobble bobble.');
   }
 
