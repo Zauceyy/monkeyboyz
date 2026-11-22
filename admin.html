@@ -43,6 +43,17 @@
   .sub{color:var(--ink2);margin:0 0 22px}
   .card{background:var(--card);border-radius:18px;padding:18px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
   .row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .profile{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+  .profile textarea.field{resize:vertical;font:inherit;font-size:16px}
+  .plabel{font-weight:600;font-size:14px;margin:10px 0 6px}
+  .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+  .pgrid .field{margin-bottom:8px!important}
+  .hint{font-size:12px;color:var(--ink2);margin:-4px 0 8px}
+  .pphotos{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+  .pph{position:relative;width:84px;height:84px;border-radius:12px;overflow:hidden;background:var(--line)}
+  .pph img{width:100%;height:100%;object-fit:cover}
+  .pph .icon{position:absolute;top:4px;right:4px;width:26px;height:26px;padding:0}
+  @media (max-width:600px){ .pgrid{grid-template-columns:1fr} }
   .thumb{width:72px;height:72px;border-radius:14px;object-fit:cover;background:#e8e8ed;flex:none}
   .grow{flex:1;min-width:180px}
   .mini{display:flex;gap:6px}
@@ -356,8 +367,55 @@ function renderMembers(){
       try { const d = await uploadFile(f.files[0]); m.img = d.url; render(); dirty(); toast('Picture uploaded — click Save to publish'); }
       catch (e) { toast(e.message); pic.firstChild.textContent = 'Change picture'; }
     };
-    row.append(img, name, pic, mini(C.members, i)); card.appendChild(row); box.appendChild(card);
+    const prof = el('button','btn ghost small', openProfiles.has(m) ? 'Hide profile ▴' : 'Edit profile ▾');
+    prof.onclick = () => { openProfiles.has(m) ? openProfiles.delete(m) : openProfiles.add(m); renderMembers(); };
+    row.append(img, name, pic, prof, mini(C.members, i)); card.appendChild(row);
+    if (openProfiles.has(m)) card.appendChild(profileEditor(m));
+    box.appendChild(card);
   });
+}
+const openProfiles = new WeakSet();
+const SOCIALS = [['youtube','YouTube'],['tiktok','TikTok'],['instagram','Instagram'],['twitch','Twitch'],['x','X / Twitter'],['snapchat','Snapchat'],['other','Other link']];
+function label(t){ const l = el('div','plabel', t); return l; }
+// Profile fields shown on the member's page on the site
+function profileEditor(m){
+  const box = el('div','profile');
+  box.appendChild(label('About'));
+  const bio = el('textarea','field'); bio.rows = 3; bio.maxLength = 1200; bio.placeholder = 'A little about them (optional)'; bio.value = m.bio || '';
+  bio.oninput = () => { m.bio = bio.value; dirty(); }; box.appendChild(bio);
+
+  const two = el('div','pgrid');
+  const b = el('div'); b.appendChild(label('Birthday'));
+  const bd = el('input','field'); bd.type = 'date'; bd.value = /^\d{4}-\d{2}-\d{2}$/.test(m.birthday || '') ? m.birthday : '';
+  bd.oninput = () => { m.birthday = bd.value; dirty(); }; b.appendChild(bd);
+  b.appendChild(el('div','hint','Only the month and day show on the site.'));
+  const d = el('div'); d.appendChild(label('Discord username'));
+  d.appendChild(input(m.discord, 'e.g. zay_mb', v => m.discord = v.trim()));
+  two.append(b, d); box.appendChild(two);
+
+  box.appendChild(label('Socials (paste full links, leave blank to hide)'));
+  const sg = el('div','pgrid');
+  SOCIALS.forEach(([k, t]) => {
+    const f = input(m.socials && m.socials[k], t + ' link (https://…)', v => {
+      m.socials = m.socials || {}; v = v.trim();
+      if (v) m.socials[k] = v; else delete m.socials[k];
+    });
+    f.addEventListener('change', () => { const v = f.value.trim(); if (v && !/^https:\/\//i.test(v)) { f.value = 'https://' + v.replace(/^http:\/\//i, ''); f.oninput(); } });
+    sg.appendChild(f);
+  });
+  box.appendChild(sg);
+
+  box.appendChild(label('More photos & GIFs'));
+  const ph = el('div','pphotos');
+  (m.photos || []).forEach((u, i) => {
+    const w = el('div','pph'); const im = el('img'); im.src = u; im.alt = '';
+    const x = el('button','icon del','✕'); x.title = 'Remove';
+    x.onclick = () => { m.photos.splice(i, 1); renderMembers(); dirty(); };
+    w.append(im, x); ph.appendChild(w);
+  });
+  box.appendChild(ph);
+  if ((m.photos || []).length < 12) box.appendChild(picButton('+ Add photo/GIF', u => { (m.photos = m.photos || []).push(u); }));
+  return box;
 }
 $('addMember').onclick = () => { C.members.push({ name: 'New member', img: '' }); render(); dirty(); };
 

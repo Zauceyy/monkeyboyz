@@ -73,6 +73,11 @@
   .tile.light{background:var(--tile)}
   .tile.dark{background:#000;color:#f5f5f7}
   .tile.dark .lede{color:#a1a1a6}
+  /* follows light / dark mode */
+  .tile.auto{background:var(--tile);color:var(--ink)}
+  .tile.auto .gold-text{background-image:linear-gradient(180deg,#d9a92f,#8a6512)}
+  html[data-theme=dark] .tile.auto{background:#0b0b0c;box-shadow:inset 0 0 0 1px #2c2c2e}
+  html[data-theme=dark] .tile.auto .gold-text{background-image:linear-gradient(180deg,var(--gold1),var(--gold2))}
   .tile .art{margin-top:auto;width:100%;display:flex;justify-content:center}
   .tile .art img{width:86%;max-width:520px;border-radius:18px 18px 0 0;aspect-ratio:4/3;object-fit:cover}
   .trophy-big{font-size:140px;margin:auto 0 70px;filter:drop-shadow(0 20px 40px rgba(201,162,74,.35))}
@@ -85,6 +90,30 @@
   .card .ph img{width:100%;height:100%;object-fit:cover;transition:transform .6s ease}
   .card:hover .ph img{transform:scale(1.04)}
   .card h4{font-size:21px;font-weight:600;margin:16px 4px 4px}
+  #gallery .card{cursor:pointer;outline:none}
+  #gallery .card:focus-visible .ph{box-shadow:0 0 0 3px var(--link)}
+  .mem-modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:20px}
+  .mem-modal.show{display:flex;animation:in .2s ease}
+  .mem-box{position:relative;background:var(--bg);color:var(--ink);border-radius:26px;width:min(640px,100%);max-height:calc(100vh - 40px);overflow:auto;padding:30px;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+  body.dark .mem-box{background:#1d1d1f;color:#f5f5f7}
+  .mem-x{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:50%;border:0;background:rgba(128,128,128,.18);color:inherit;font-size:16px;cursor:pointer}
+  .mem-top{display:flex;gap:22px;align-items:center}
+  .mem-ph{flex:0 0 160px;height:160px;border-radius:22px;overflow:hidden;background:#e8e8ed}
+  .mem-ph img{width:100%;height:100%;object-fit:cover}
+  .mem-info{min-width:0}
+  .mem-info h3{font-size:34px;letter-spacing:-.02em;margin:0 0 10px}
+  .mem-facts{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;color:var(--ink2);font-size:15px;margin-bottom:12px}
+  body.dark .mem-facts{color:#a1a1a6}
+  .mem-dc{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:980px;background:#5865f2;color:#fff;font:inherit;font-size:14px;padding:6px 12px;cursor:pointer}
+  .mem-dc svg{width:17px;height:17px}
+  .mem-links{display:flex;flex-wrap:wrap;gap:8px}
+  .mem-link{border:1px solid rgba(128,128,128,.35);border-radius:980px;padding:6px 14px;font-size:14px;color:inherit;text-decoration:none}
+  .mem-link:hover{background:rgba(128,128,128,.14)}
+  .mem-bio{font-size:17px;line-height:1.5;margin:20px 0 0;white-space:pre-line}
+  .mem-empty{color:var(--ink2)}
+  .mem-photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:20px}
+  .mem-photos img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:14px;cursor:zoom-in;background:#e8e8ed}
+  @media (max-width:560px){ .mem-box{padding:24px 20px} .mem-top{flex-direction:column;align-items:flex-start;gap:14px} .mem-ph{flex-basis:auto;width:120px;height:120px} .mem-info h3{font-size:28px} }
   .card p{font-size:15px;color:var(--ink2);margin:0 4px}
   .gnav{display:flex;justify-content:flex-end;gap:12px;max-width:1000px;margin:0 auto;padding:0 22px}
   .gnav button{width:36px;height:36px;border-radius:50%;border:0;background:#e8e8ed;color:var(--ink);font-size:18px;cursor:pointer}
@@ -362,40 +391,42 @@
   <section class="hero">
     <p class="eyebrow">On YouTube</p>
     <h1 class="h-xl">MonkeyBoyz.</h1>
-    <p class="lede">A group of freaks compete to embarrass each other.</p>
+    <p class="lede">Nine friends who play games together.</p>
     <div class="links">
       <a class="pill" href="https://www.youtube.com/@YTMonkeyBoyz" target="_blank" rel="noopener">Watch now</a>
       <a class="lnk" href="https://www.youtube.com/@YTMonkeyBoyz?sub_confirmation=1" target="_blank" rel="noopener">Subscribe</a>
     </div>
-    <div class="shot reveal"><img id="bannerImg" src="monkeyboyz.jpg" alt="The MonkeyBoyz"></div>
-    <div class="bp-label">Pick your banner</div>
-    <div class="banner-pick" id="bannerPick" role="radiogroup" aria-label="Banner"></div>
+    <div class="shot reveal"><img id="bannerImg" alt="The MonkeyBoyz"></div>
+    <script>
+    /* a different banner each time the page loads (never the same one twice in a row) */
+    (function(){
+      var B = ['monkeyboyz.jpg','banners/festive.webp','banners/thankful.webp','banners/newyear.webp','banners/usa.webp','banners/wrestling.webp','banners/mormon.webp','banners/pride.webp','banners/boring.webp'];
+      var last = null; try { last = localStorage.getItem('mb_banner_last'); } catch (e) {}
+      var pool = B.filter(function(x){ return x !== last; }), pick = pool[Math.floor(Math.random() * pool.length)];
+      try { localStorage.setItem('mb_banner_last', pick); } catch (e) {}
+      document.getElementById('bannerImg').src = pick;
+    })();
+    </script>
   </section>
 
   <section class="sec">
     <div class="wrap center reveal">
-      <h2 class="h-l">Pure chaos.<br><span style="color:var(--ink2)">Zero dignity.</span></h2>
-      <p class="lede">Challenges where somebody always loses — and the loser never hears the end of it.</p>
-      <div class="strip">
-        <div><b>100%</b><span>Embarrassment guaranteed</span></div>
-        <div><b>0</b><span>Shame left in the group</span></div>
-        <div><b>∞</b><span>Bananas consumed</span></div>
-      </div>
+      <h2 class="h-l">A Group Of Freaks Compete To Embarrass Each Other</h2>
     </div>
   </section>
 
   <div class="grid2">
-    <a class="tile dark reveal" href="#vote">
-      <p class="eyebrow" style="color:#a1a1a6">The Monkey Awards</p>
+    <a class="tile auto reveal" href="#vote">
+      <p class="eyebrow">The Monkey Awards</p>
       <h2 class="h-m gold-text">Who gets the trophy?</h2>
       <p class="lede">Cast your vote in every category.</p>
-      <div class="links"><span class="lnk" style="color:#2997ff">Vote now</span></div>
+      <div class="links"><span class="lnk">Vote now</span></div>
       <div class="trophy-big">🏆</div>
     </a>
     <div class="tile light reveal">
       <p class="eyebrow">On YouTube</p>
-      <h2 class="h-m">Watch the chaos.</h2>
-      <p class="lede">Every challenge, every loss, every embarrassing moment.</p>
+      <h2 class="h-m">Watch us play.</h2>
+      <p class="lede">We play games with the boys and post it. Come hang out.</p>
       <div class="links">
         <a class="lnk" href="https://www.youtube.com/@YTMonkeyBoyz/videos" target="_blank" rel="noopener">Latest videos</a>
         <a class="lnk" href="https://www.youtube.com/@YTMonkeyBoyz?sub_confirmation=1" target="_blank" rel="noopener">Subscribe</a>
@@ -407,7 +438,7 @@
   <section class="sec" style="padding-bottom:70px">
     <div class="wrap reveal">
       <h2 class="h-l">Meet the troop.</h2>
-      <p class="lede" style="margin-left:0">The nine MonkeyBoyz.</p>
+      <p class="lede" style="margin-left:0">Tap anyone to see their profile.</p>
     </div>
     <div class="gallery" id="gallery"></div>
     <div class="gnav"><button aria-label="Previous" onclick="slide(-1)">‹</button><button aria-label="Next" onclick="slide(1)">›</button></div>
@@ -531,13 +562,13 @@
   <section class="dc">
     <div class="dc-icon"><svg><use href="#i-dc"/></svg></div>
     <h1 class="h-xl">Discord.</h1>
-    <p class="lede">The MonkeyBoyz hangout. Clips, chaos, and award debates.</p>
+    <p class="lede">Where we hang out, play, and share clips.</p>
     <a class="pill dcb" href="https://discord.gg/Gw9YN9t" target="_blank" rel="noopener">Join the server</a>
     <div class="code">discord.gg/Gw9YN9t</div>
   </section>
   <div class="grid2" style="padding-bottom:60px">
     <div class="tile light" style="min-height:420px"><p class="eyebrow">Share</p><h2 class="h-m">Post your best clips.</h2><div class="art"><img loading="lazy" src="https://commons.wikimedia.org/wiki/Special:FilePath/Rhesus_macaque_(Macaca_mulatta_mulatta),_male,_Gokarna.jpg?width=900" alt="Macaque"></div></div>
-    <div class="tile dark" style="min-height:420px"><p class="eyebrow" style="color:#a1a1a6">Argue</p><h2 class="h-m">Fight about the awards.</h2><div class="art"><img loading="lazy" src="https://commons.wikimedia.org/wiki/Special:FilePath/013_Alpha_male_chimpanzee_at_Kibale_forest_National_Park_Photo_by_Giles_Laurent.jpg?width=900" alt="Chimpanzee"></div></div>
+    <div class="tile auto" style="min-height:420px"><p class="eyebrow">Argue</p><h2 class="h-m">Fight about the awards.</h2><div class="art"><img loading="lazy" src="https://commons.wikimedia.org/wiki/Special:FilePath/013_Alpha_male_chimpanzee_at_Kibale_forest_National_Park_Photo_by_Giles_Laurent.jpg?width=900" alt="Chimpanzee"></div></div>
   </div>
 </main>
 
@@ -554,6 +585,9 @@
   </div>
 </footer>
 
+<div class="mem-modal" id="memberModal" role="dialog" aria-modal="true" aria-label="Member profile">
+  <div class="mem-box"><button class="mem-x" id="memClose" aria-label="Close">✕</button><div id="memBody"></div></div>
+</div>
 <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Clip viewer">
   <button class="close" id="lbClose" aria-label="Close">✕</button>
   <div class="stage" id="lbStage"></div>
@@ -635,47 +669,68 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && lo
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const safeUrl = u => /^(https:\/\/|members\/|[a-z0-9_-]+\.(webp|png|jpe?g|gif)$)/i.test(u || '') ? u : '';
 
-/* ---------- banner picker (choice is remembered on this device) ---------- */
-const BANNERS = [
-  { id: 'classic',   name: 'Classic',      src: 'monkeyboyz.jpg' },
-  { id: 'festive',   name: 'Festive',      src: 'banners/festive.webp' },
-  { id: 'thankful',  name: 'Thankful',     src: 'banners/thankful.webp' },
-  { id: 'newyear',   name: 'New Year',     src: 'banners/newyear.webp' },
-  { id: 'usa',       name: 'USA',          src: 'banners/usa.webp' },
-  { id: 'wrestling', name: 'Wrestling',    src: 'banners/wrestling.webp' },
-  { id: 'mormon',    name: 'Mormon',       src: 'banners/mormon.webp' },
-  { id: 'pride',     name: 'Pride',        src: 'banners/pride.webp' },
-  { id: 'boring',    name: 'Boring',       src: 'banners/boring.webp' },
-];
-function setBanner(id, save){
-  const b = BANNERS.find(x => x.id === id) || BANNERS[0];
-  const img = document.getElementById('bannerImg');
-  if (img.getAttribute('src') !== b.src) { img.style.opacity = .3; img.onload = () => img.style.opacity = 1; img.src = b.src; }
-  img.alt = 'The MonkeyBoyz — ' + b.name;
-  document.querySelectorAll('.bp').forEach(x => { const on = x.dataset.id === b.id; x.classList.toggle('on', on); x.setAttribute('aria-checked', on); });
-  if (save) store.set('mb_banner', b.id);
-}
-(function(){
-  const box = document.getElementById('bannerPick');
-  BANNERS.forEach(b => {
-    const btn = el('button', 'bp'); btn.type = 'button'; btn.dataset.id = b.id; btn.setAttribute('role', 'radio');
-    const im = new Image(); im.src = b.id === 'classic' ? 'banners/classic-t.webp' : 'banners/' + b.id + '-t.webp'; im.alt = ''; im.loading = 'lazy';
-    btn.append(im, el('span', null, b.name));
-    btn.onclick = () => setBanner(b.id, true);
-    box.appendChild(btn);
-  });
-  setBanner(store.get('mb_banner') || 'classic', false);
-})();
-
 /* ---------- meet the troop ---------- */
 function renderMembers(){
   const gal = document.getElementById('gallery'); gal.innerHTML = '';
   C.members.forEach(m => {
     const c = el('div','card'), ph = el('div','ph'), im = new Image();
     im.loading = 'lazy'; im.alt = m.name; im.src = safeUrl(m.img);
-    ph.appendChild(im); c.appendChild(ph); c.appendChild(el('h4', null, m.name)); gal.appendChild(c);
+    ph.appendChild(im); c.appendChild(ph); c.appendChild(el('h4', null, m.name));
+    c.tabIndex = 0; c.setAttribute('role', 'button'); c.setAttribute('aria-label', 'Open ' + m.name + "'s profile");
+    c.onclick = () => openMember(m);
+    c.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMember(m); } };
+    gal.appendChild(c);
   });
 }
+
+/* ---------- member profile window ---------- */
+const SOCIAL_NAMES = { youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', twitch: 'Twitch', x: 'X', snapchat: 'Snapchat', other: 'Link' };
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function bdayText(b){
+  const m = String(b || '').match(/^(?:\d{4}|-)-(\d{2})-(\d{2})$/); if (!m) return '';
+  const mo = +m[1], d = +m[2]; return mo >= 1 && mo <= 12 && d >= 1 && d <= 31 ? MONTHS[mo - 1] + ' ' + d : '';
+}
+function openMember(m){
+  const box = document.getElementById('memBody'); box.innerHTML = '';
+  const top = el('div', 'mem-top');
+  const ph = el('div', 'mem-ph'), im = new Image(); im.src = safeUrl(m.img); im.alt = m.name; ph.appendChild(im);
+  const info = el('div', 'mem-info'); info.appendChild(el('h3', null, m.name));
+  const facts = el('div', 'mem-facts');
+  const bd = bdayText(m.birthday); if (bd) facts.appendChild(el('span', null, '🎂 ' + bd));
+  if (m.discord) {
+    const d = el('button', 'mem-dc'); d.type = 'button'; d.title = 'Copy Discord username';
+    d.innerHTML = '<svg><use href="#i-dc"/></svg>'; d.appendChild(el('span', null, m.discord));
+    d.onclick = () => { try { navigator.clipboard.writeText(m.discord); d.lastChild.textContent = 'Copied!'; setTimeout(() => d.lastChild.textContent = m.discord, 1200); } catch (e) {} };
+    facts.appendChild(d);
+  }
+  if (facts.children.length) info.appendChild(facts);
+  const so = m.socials || {}, links = el('div', 'mem-links');
+  Object.keys(SOCIAL_NAMES).forEach(k => {
+    const u = so[k]; if (!/^https:\/\//i.test(u || '')) return;
+    const a = el('a', 'mem-link', SOCIAL_NAMES[k]); a.href = u; a.target = '_blank'; a.rel = 'noopener nofollow'; links.appendChild(a);
+  });
+  if (links.children.length) info.appendChild(links);
+  top.append(ph, info); box.appendChild(top);
+  if (m.bio) box.appendChild(el('p', 'mem-bio', m.bio));
+  const photos = (m.photos || []).map(safeUrl).filter(Boolean);
+  if (photos.length) {
+    const g = el('div', 'mem-photos');
+    photos.forEach(u => { const t = new Image(); t.src = u; t.alt = ''; t.loading = 'lazy'; t.onclick = () => openViewer({ type: 'image', url: u, caption: m.name }); g.appendChild(t); });
+    box.appendChild(g);
+  }
+  if (!bd && !m.discord && !links.children.length && !m.bio && !photos.length) box.appendChild(el('p', 'mem-bio mem-empty', 'Nothing here yet.'));
+  document.getElementById('memberModal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('memClose').focus();
+}
+function closeMember(){
+  const mm = document.getElementById('memberModal'); if (!mm.classList.contains('show')) return;
+  mm.classList.remove('show'); document.body.style.overflow = '';
+}
+document.getElementById('memClose').onclick = closeMember;
+document.getElementById('memberModal').addEventListener('click', e => { if (e.target.id === 'memberModal') closeMember(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && !document.getElementById('lightbox').classList.contains('show')) closeMember(); }, true);
+addEventListener('hashchange', closeMember);
 
 /* ---------- clips & gifs ---------- */
 function ytId(u){ const m = String(u).match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([\w-]{11})/); return m ? m[1] : null; }
@@ -712,7 +767,8 @@ function openViewer(m){
 }
 function closeViewer(){
   const lb = document.getElementById('lightbox'); if (!lb.classList.contains('show')) return;
-  lb.classList.remove('show'); document.getElementById('lbStage').innerHTML = ''; document.body.style.overflow = '';
+  lb.classList.remove('show'); document.getElementById('lbStage').innerHTML = '';
+  document.body.style.overflow = document.getElementById('memberModal').classList.contains('show') ? 'hidden' : '';
 }
 document.getElementById('lbClose').onclick = closeViewer;
 document.getElementById('lightbox').addEventListener('click', e => { if (e.target.id === 'lightbox' || e.target.id === 'lbStage' || e.target.tagName === 'IMG') closeViewer(); });
