@@ -8,6 +8,12 @@
     { id: 'duck-life-4', title: 'Duck Life 4', by: 'Wix Games', year: 2012,
       swf: 'games/flash/duck-life-4.swf', cover: 'games/flash/duck-life-4.jpg', w: 750, h: 480,
       about: 'Train your duck at running, swimming, flying and climbing, then race to win. Your progress saves in this browser.' },
+    { id: 'happy-wheels', title: 'Happy Wheels (demo)', by: 'Jim Bonacci / Fancy Force', year: 2010,
+      swf: 'games/flash/happy-wheels.swf', cover: 'games/flash/happy-wheels.jpg', w: 900, h: 500,
+      about: 'The original browser demo. Ride through brutal obstacle courses without losing too many limbs. Arrow keys to move, Space to jump, Shift/Ctrl for actions, Z to eject.' },
+    { id: 'papas-freezeria', title: "Papa's Freezeria", by: 'Flipline Studios', year: 2011,
+      swf: 'games/flash/papas-freezeria.swf', cover: 'games/flash/papas-freezeria.jpg', w: 640, h: 480,
+      about: 'Run an ice cream shop on Calypso Island: take orders, blend sundaes, add toppings and keep customers happy. Progress saves in this browser.' },
   ];
   const RUFFLE = ['https://unpkg.com/@ruffle-rs/ruffle@0.8.0/ruffle.js', 'https://cdn.jsdelivr.net/npm/@ruffle-rs/ruffle@0.8.0/ruffle.js'];
 

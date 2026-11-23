@@ -324,9 +324,13 @@
   .writein input.on{border-color:var(--gold2);box-shadow:0 0 0 2px var(--gold2)}
   .writein span{color:#86868b;font-size:14px;white-space:nowrap}
   /* ---------- games ---------- */
-  .game-tabs{display:inline-flex;gap:6px;background:var(--tile);padding:5px;border-radius:980px;margin:30px 0 26px}
+  .game-tabs{display:inline-flex;gap:6px;background:var(--tile);padding:5px;border-radius:980px;margin:14px 0 26px}
   .game-pick{border:0;background:none;color:var(--ink);font:inherit;font-size:16px;padding:10px 18px;border-radius:980px;cursor:pointer}
   .game-pick.on{background:var(--ink);color:var(--bg)}
+  .game-cats{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:30px 0 0}
+  .game-cat{border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:17px;font-weight:700;padding:10px 20px;border-radius:980px;cursor:pointer}
+  .game-cat.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .game-tabs.solo{display:none}
   .game-box{display:flex;flex-direction:column;align-items:center;gap:12px}
   #flappyCanvas{width:min(400px,100%);aspect-ratio:2/3;border-radius:22px;touch-action:manipulation;cursor:pointer;box-shadow:0 20px 50px rgba(0,0,0,.18)}
   .clk{display:grid;grid-template-columns:1.2fr 1fr;gap:26px;width:100%;max-width:860px;text-align:left}
@@ -630,19 +634,25 @@
     <div class="wrap center">
       <p class="eyebrow">Games</p>
       <h1 class="h-xl" style="font-size:clamp(44px,7vw,80px)">Monkey business.</h1>
+      <div class="game-cats">
+        <button class="game-cat on" data-cat="arcade">🕹️ Arcade</button>
+        <button class="game-cat" data-cat="word">🧩 Word Games</button>
+        <button class="game-cat" data-cat="cards">🃏 Cards</button>
+        <button class="game-cat" data-cat="flash">💾 Flash</button>
+      </div>
       <div class="game-tabs">
-        <button class="game-pick on" data-game="flappy">🐒 Flappy Monkey</button>
-        <button class="game-pick" data-game="clicker">🎧 Gerson Bobble</button>
-        <button class="game-pick" data-game="blocks">🍌 Banana Blocks</button>
-        <button class="game-pick" data-game="dle">🟩 Monkeydle</button>
-        <button class="game-pick" data-game="conn">🔗 Connections</button>
-        <button class="game-pick" data-game="strands">🧵 Strands</button>
-        <button class="game-pick" data-game="mini">✏️ The Mini</button>
-        <button class="game-pick" data-game="xword">📰 Crossword</button>
-        <button class="game-pick" data-game="cards">🃏 Monkey Cards</button>
-        <button class="game-pick" data-game="race">🏁 Monkey Race</button>
-        <button class="game-pick" data-game="whack">🔨 Whack-a-Monkey</button>
-        <button class="game-pick" data-game="flash">🕹️ Flash games</button>
+        <button class="game-pick on" data-cat="arcade" data-game="flappy">🐒 Flappy Monkey</button>
+        <button class="game-pick" data-cat="arcade" data-game="clicker">🎧 Gerson Bobble</button>
+        <button class="game-pick" data-cat="arcade" data-game="blocks">🍌 Banana Blocks</button>
+        <button class="game-pick" data-cat="arcade" data-game="whack">🔨 Whack-a-Monkey</button>
+        <button class="game-pick" data-cat="word" data-game="dle">🟩 Monkeydle</button>
+        <button class="game-pick" data-cat="word" data-game="conn">🔗 Connections</button>
+        <button class="game-pick" data-cat="word" data-game="strands">🧵 Strands</button>
+        <button class="game-pick" data-cat="word" data-game="mini">✏️ The Mini</button>
+        <button class="game-pick" data-cat="word" data-game="xword">📰 Crossword</button>
+        <button class="game-pick" data-cat="cards" data-game="cards">🃏 Monkey Cards</button>
+        <button class="game-pick" data-cat="cards" data-game="race">🏁 Monkey Race</button>
+        <button class="game-pick" data-cat="flash" data-game="flash">💾 Flash games</button>
       </div>
       <div id="gameFlappy" class="game-box flappy-wrap">
         <div class="flappy-col"><canvas id="flappyCanvas"></canvas>
@@ -713,12 +723,12 @@
 </div>
 
 <script src="games/blocks.js?v=14"></script>
-<script src="games/flash.js?v=3"></script>
+<script src="games/flash.js?v=4"></script>
 <script src="games/cards.js?v=8"></script>
 <script src="games/arcade.js?v=1"></script>
 <script src="games/monkeydle.js?v=2"></script>
 <script src="games/nyt.js?v=1"></script>
-<script src="games/games.js?v=16"></script>
+<script src="games/games.js?v=17"></script>
 <script>
 /* =====================================================================
    Content comes from the MonkeyBoyz backend (edit it at /admin).

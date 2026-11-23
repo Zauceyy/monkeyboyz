@@ -276,7 +276,11 @@
   let inited = false, current = 'flappy';
   function pick(which) {
     current = which;
-    document.querySelectorAll('.game-pick').forEach(b => b.classList.toggle('on', b.dataset.game === which));
+    const btn = document.querySelector(`.game-pick[data-game="${which}"]`), cat = btn ? btn.dataset.cat : 'arcade';
+    document.querySelectorAll('.game-pick').forEach(b => { b.classList.toggle('on', b.dataset.game === which); b.style.display = b.dataset.cat === cat ? '' : 'none'; });
+    document.querySelectorAll('.game-cat').forEach(b => b.classList.toggle('on', b.dataset.cat === cat));
+    const tabs = document.querySelector('.game-tabs'); if (tabs) tabs.classList.toggle('solo', document.querySelectorAll(`.game-pick[data-cat="${cat}"]`).length < 2);
+    try { localStorage.setItem('mb_game_last', which); } catch (e) {}
     document.getElementById('gameFlappy').style.display = which === 'flappy' ? '' : 'none';
     document.getElementById('gameClicker').style.display = which === 'clicker' ? '' : 'none';
     document.getElementById('gameBlocks').style.display = which === 'blocks' ? '' : 'none';
@@ -321,6 +325,8 @@
         if (window.MBDle) MBDle.init(document.getElementById('dleRoot'));
         Object.values(PUZ).forEach(([box, api]) => { if (window[api]) window[api].init(document.getElementById(box).firstElementChild); });
         document.querySelectorAll('.game-pick').forEach(b => b.onclick = () => pick(b.dataset.game));
+        document.querySelectorAll('.game-cat').forEach(c => c.onclick = () => { const first = document.querySelector(`.game-pick[data-cat="${c.dataset.cat}"]`); if (first) pick(first.dataset.game); });
+        try { const last = localStorage.getItem('mb_game_last'); if (last && document.querySelector(`.game-pick[data-game="${last}"]`)) current = last; } catch (e) {}
       }
       pick(current);
     },
