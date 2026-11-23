@@ -218,6 +218,24 @@
   .fb-move b{font-size:16px} .fb-move span{font-size:12px;opacity:.9}
   .fb-move:disabled{opacity:.45;cursor:default}
   .fb-move.sw{background:#495057}
+  .tr-sides{display:flex;gap:12px;align-items:stretch;justify-content:center;flex-wrap:wrap;margin:6px 0}
+  .tr-side{flex:1;min-width:240px;max-width:420px;background:var(--tile);border-radius:18px;padding:12px;border:2px solid transparent}
+  .tr-side.locked{border-color:#40c057}
+  .tr-side h5,.tr-h{margin:0 0 8px;font-size:13px;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em}
+  .tr-h{margin-top:16px;text-align:center}
+  .tr-offer,.tr-pool{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;min-height:60px}
+  .tr-offer .empty{color:var(--ink2);font-size:14px;align-self:center}
+  .tr-offer .tc,.tr-pool .tc{cursor:pointer}
+  .tr-pool .tc.pick{outline:3px solid #40c057;outline-offset:2px;opacity:.6}
+  .tr-arrow{font-size:30px;align-self:center;color:var(--ink2)}
+  .tr-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .tr-n{position:absolute;top:6px;left:6px;background:#111;color:#fff;font-size:12px;font-weight:800;border-radius:980px;padding:1px 7px;z-index:3}
+  .fb-move i.fx{font-style:normal;font-size:11px;font-weight:800;align-self:flex-start;background:rgba(0,0,0,.28);border-radius:980px;padding:2px 8px;margin-top:3px}
+  .fb-move i.fx.up{background:#2b8a3e;box-shadow:0 0 0 1px #b2f2bb} .fb-move i.fx.dn{background:#c92a2a;box-shadow:0 0 0 1px #ffc9c9} .fb-move i.fx.st{background:rgba(255,255,255,.18)}
+  .fb-intel{font-size:13px;opacity:.8;margin-top:4px}
+  .fb-chart{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;font-size:14px;margin-bottom:6px}
+  .fb-pickc{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .fb-stats{font-size:12px;color:var(--ink2);text-align:center;line-height:1.35}
   .fb-team{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:12px 0}
   .fb-team .tc{cursor:pointer}
   .fb-team .tc.pick{transform:translateY(-8px);box-shadow:0 0 0 4px #2f81f7,0 10px 24px rgba(0,0,0,.25)}
@@ -563,8 +581,9 @@
         <div class="cards-prog"><small class="prog-t"></small><div class="bar"><i class="prog-bar"></i></div></div>
       </div>
       <p class="cards-odds" style="margin-top:12px">Every member has 100 cards: #1–50 Common · 51–75 Uncommon · 76–88 Holo Rare · 89–95 Shiny Epic · 96–99 Legendary · #100 Golden one-of-one · 🏴‍☠️ Pirate Token: 1 in 137,500. 3 free packs every 3 minutes (saves up to 10). 🍀 <b>Lucky Packs</b> have way better odds and always have a Rare or better: win them in Card Battle, Whack-a-Monkey, the Monkey Race, Flappy Monkey (1 per 10 points) and Banana Blocks (1 per 10 lines).</p>
-      <div class="cards-views"><button class="v-col on">📒 Collection</button><button class="v-bt">⚔️ Card Battle</button></div>
+      <div class="cards-views"><button class="v-col on">📒 Collection</button><button class="v-bt">⚔️ Card Battle</button><button class="v-tr">🤝 Trade</button></div>
       <div class="battle" hidden></div>
+      <div class="trade" hidden></div>
       <div class="cards-main">
         <div>
           <div class="cards-filters"><span class="chips" style="display:contents"></span>
@@ -587,13 +606,15 @@
     root.querySelector('.trade-btn').onclick = tradeIn;
     root.querySelector('.sort').onchange = e => { sort = e.target.value; render(); };
     const setView = v => {
-      root.querySelector('.v-col').classList.toggle('on', v === 'col'); root.querySelector('.v-bt').classList.toggle('on', v === 'bt');
-      root.querySelector('.cards-main').hidden = v !== 'col'; root.querySelector('.battle').hidden = v !== 'bt';
+      root.querySelector('.v-col').classList.toggle('on', v === 'col'); root.querySelector('.v-bt').classList.toggle('on', v === 'bt'); root.querySelector('.v-tr').classList.toggle('on', v === 'tr');
+      root.querySelector('.cards-main').hidden = v !== 'col'; root.querySelector('.battle').hidden = v !== 'bt'; root.querySelector('.trade').hidden = v !== 'tr';
+      if (v === 'tr' && !Trade.online()) Trade.lobby();
       if (v !== 'bt') FX.stopMusic();
       if (v === 'bt' && !Battle.on) Battle.intro();
     };
     root.querySelector('.v-col').onclick = () => setView('col');
     root.querySelector('.v-bt').onclick = () => setView('bt');
+    root.querySelector('.v-tr').onclick = () => setView('tr');
     render(); tick();
   }
   function show() {
@@ -766,14 +787,23 @@
     Skill:         { name: 'Quick Combo',  d: 'Always goes first' },
     Clutch:        { name: 'Clutch Heal',  d: 'Heal 35% HP', status: true },
   };
+  // every card also gets one attack of a second type, so matchups give you real choices
+  const covType = (c, type) => { const o = Object.keys(TYPES).filter(t => t !== type && !TYPES[type].beats.includes(t)); return o[hash(String(c.id) + '#cov') % o.length]; };
+  const TYPED_SP = { Rage: 1.5, Yapping: .95, Luck: 1.15, Skill: .85 };
+  // what type a move hits with (null = ignores types) and its average power
+  const moveType = (m, f) => m.kind !== 'sp' ? m.type : TYPED_SP[m.key] ? f.type : null;
+  const movePow = m => m.kind !== 'sp' ? m.pow * m.acc : TYPED_SP[m.key] || (m.key === 'Brain Cells' ? 1.05 : 0);
+  const weakTo = t => Object.keys(TYPES).filter(x => TYPES[x].beats.includes(t));
+  const resists = t => TYPES[t].beats;
+  const tlist = a => a.map(t => TYPES[t].e + ' ' + t).join(', ');
   function fighter(c) {
     const a = allStats(c), lvl = c.token ? 6 : c.lvl, power = c.token ? 180 : c.power, type = typeOf(c);
     const ranked = Object.keys(a).sort((x, y) => a[y] - a[x]);
     const hp = Math.round(100 + power * 1.15);
     const r = rng(hash(c.id + '#moves'));
-    const tm = TYPE_MOVES[type][r() < .5 ? 0 : 1];
+    const tm = TYPE_MOVES[type][r() < .5 ? 0 : 1], cov = covType(c, type);
     const moves = [
-      { kind: 'sig', name: c.token ? 'X Marks the Spot' : c.move, type, pow: 1, acc: .95, pp: 15, d: `${TYPES[type].e} ${type} · reliable` },
+      { kind: 'sig', name: c.token ? 'X Marks the Spot' : c.move, type: cov, pow: 1, acc: .95, pp: 15, d: `${TYPES[cov].e} ${cov} · reliable` },
       { kind: 'type', name: tm.name, type, pow: tm.pow, acc: tm.acc, pp: tm.pow > 1 ? 5 : 10, d: `${TYPES[type].e} ${type} · ${tm.pow > 1 ? 'strong, can miss' : 'never misses'}` },
       Object.assign({ kind: 'sp', key: ranked[0], pp: 5 }, SPECIALS[ranked[0]]),
       Object.assign({ kind: 'sp', key: ranked[1], pp: 5 }, SPECIALS[ranked[1]]),
@@ -870,6 +900,9 @@
       pool.forEach((c, i) => {
         const el = cardEl(c, window.innerWidth < 600 ? 104 : 132);
         const t = document.createElement('span'); t.className = 'tybadge'; t.style.background = TYPES[typeOf(c)].c; t.textContent = TYPES[typeOf(c)].e + ' ' + typeOf(c) + (c.loan ? ' · LOAN' : ''); el.appendChild(t);
+        const fx = fighter(c), st = document.createElement('div'); st.className = 'fb-stats';
+        st.innerHTML = `❤️ ${fx.max} · ⚔️ ${fx.atk} · 💨 ${Math.round(fx.spd)}<br>Attacks: ${[...new Set(fx.moves.map(m => moveType(m, fx)).filter(Boolean))].map(x => TYPES[x].e).join(' ')}`;
+        const wrap = document.createElement('div'); wrap.className = 'fb-pickc'; wrap.append(el, st); el._wrap = wrap;
         el.onclick = () => {
           if (this.myTeam) return;
           const k = this.chosen.indexOf(i);
@@ -879,7 +912,7 @@
           this.E('.fb-go').disabled = this.chosen.length !== 3;
           this.E('.fb-go').textContent = this.chosen.length === 3 ? 'Battle!' : `Pick ${3 - this.chosen.length} more`;
         };
-        team.appendChild(el);
+        team.appendChild(el._wrap);
       });
       this.E('.fb-go').onclick = () => {
         const cards = this.chosen.map(i => pool[i]);
@@ -954,17 +987,31 @@
     },
     async say(t, ms) { const l = this.E('.fb-log'); if (l) l.innerHTML = t; await wait(ms || 1100); },
     clearButtons() { const a = this.E('.fb-moves'), b = this.E('.fb-extra'); if (a) a.innerHTML = ''; if (b) b.innerHTML = ''; },
+    chartBtn() {
+      const b = document.createElement('button'); b.className = 'cards-btn ghost'; b.textContent = '📖 Type chart';
+      b.onclick = () => {
+        const log = this.E('.fb-log'), was = log.innerHTML;
+        log.innerHTML = '<div class="fb-chart">' + Object.keys(TYPES).map(t => `<div><b style="color:${TYPES[t].c}">${TYPES[t].e} ${t}</b> beats ${tlist(TYPES[t].beats)}</div>`).join('') + '</div><small style="opacity:.7">Super effective = 1.6× damage · not very effective = 0.6×. Tap again to close.</small>';
+        b.onclick = () => { log.innerHTML = was; b.onclick = null; this.menu(); };
+      };
+      return b;
+    },
     menu() {
       if (this.over || this.busy) return;
       if (this.needMine) return this.switchMenu(true);
       if (this.needOpp) { this.clearButtons(); this.E('.fb-log').innerHTML = `Waiting for ${esc(PvP.opp)} to send out their next card…`; return; }
       const f = this.me[this.mi], box = this.E('.fb-moves'), extra = this.E('.fb-extra'); this.clearButtons();
-      this.E('.fb-log').innerHTML = `What will <b>${esc(f.name)}</b> do?`;
+      const foe = this.op[this.ci];
+      this.E('.fb-log').innerHTML = `What will <b>${esc(f.name)}</b> do?<div class="fb-intel">Foe <b>${esc(foe.name)}</b> is ${TYPES[foe.type].e} ${foe.type} · weak to ${tlist(weakTo(foe.type))} · resists ${tlist(resists(foe.type))}</div>`;
       if (f.hp / f.max < .25 && !this.warned) { this.warned = true; FX.play('lowhp'); }
       f.moves.forEach((m, i) => {
         const b = document.createElement('button'); b.className = 'fb-move';
         b.style.background = m.kind === 'sp' ? '#343a40' : TYPES[m.type].c;
-        b.innerHTML = `<b>${esc(m.name)}</b><span>${esc(m.d)}</span><em>PP ${m.pp}/${m.max}</em>`;
+        const mt = moveType(m, f), e = mt ? eff(mt, foe.type) : 1, pw = movePow(m);
+        const est = pw ? Math.round(f.atk * pw * e * f.boost * .925 * (foe.shield ? .5 : 1) / foe.max * 100) : 0;
+        const tag = !pw ? '<i class="fx st">Support move</i>' : !mt ? `<i class="fx">Ignores types · ~${est}% HP</i>`
+          : e > 1 ? `<i class="fx up">▲ Super effective · ~${est}% HP</i>` : e < 1 ? `<i class="fx dn">▼ Not very effective · ~${est}% HP</i>` : `<i class="fx">Normal · ~${est}% HP</i>`;
+        b.innerHTML = `<b>${esc(m.name)}</b><span>${esc(m.d)}</span>${tag}<em>PP ${m.pp}/${m.max}</em>`;
         b.disabled = m.pp <= 0;
         b.onclick = () => { if (!this.busy) { FX.play('select'); this.choose({ kind: 'move', i }); } };
         box.appendChild(b);
@@ -974,6 +1021,7 @@
       const bench = this.me.filter((x, i) => i !== this.mi && x.hp > 0);
       const sw = document.createElement('button'); sw.className = 'cards-btn ghost'; sw.textContent = bench.length ? '🔄 Switch card' : 'No one left to switch to';
       sw.disabled = !bench.length; sw.onclick = () => { if (!this.busy) this.switchMenu(); }; extra.appendChild(sw);
+      extra.appendChild(this.chartBtn());
     },
     switchMenu(forced) {
       const box = this.E('.fb-moves'), extra = this.E('.fb-extra'); this.clearButtons();
@@ -981,7 +1029,10 @@
       this.me.forEach((x, i) => {
         if (i === this.mi || x.hp <= 0) return;
         const b = document.createElement('button'); b.className = 'fb-move'; b.style.background = TYPES[x.type].c;
-        b.innerHTML = `<b>${esc(x.name)}</b><span>${TYPES[x.type].e} ${x.type} · ${Math.ceil(x.hp)}/${x.max} HP</span>`;
+        const foe = this.op[this.ci], hurt = Math.max(...foe.moves.map(m => moveType(m, foe)).filter(Boolean).map(t => eff(t, x.type)), 1);
+        const dealt = Math.max(...x.moves.map(m => moveType(m, x)).filter(Boolean).map(t => eff(t, foe.type)), 1);
+        const note = foe.hp <= 0 ? '' : hurt > 1 ? '<i class="fx dn">⚠️ Weak to the foe\'s attacks</i>' : dealt > 1 ? '<i class="fx up">👍 Good matchup</i>' : '';
+        b.innerHTML = `<b>${esc(x.name)}</b><span>${TYPES[x.type].e} ${x.type} · ${Math.ceil(x.hp)}/${x.max} HP</span>${note}`;
         b.onclick = () => { if (this.busy) return; if (forced) this.sendNext(i); else this.choose({ kind: 'switch', to: i }); };
         box.appendChild(b);
       });
@@ -1011,7 +1062,13 @@
       if (has('Aura') && !f.shield && Math.random() < .2) return { kind: 'move', i: has('Aura').i };
       const attacks = ok.filter(o => !o.m.status);
       if (!attacks.length) return { kind: 'move', i: ok[0].i };
-      const score = o => (o.m.pow || 1.1) * (o.m.kind === 'sp' && o.m.key === 'Brain Cells' ? 1 : eff(f.type, foe.type)) * (o.m.acc || .9) * (.8 + Math.random() * .4);
+      const score = o => { const mt = moveType(o.m, f); return movePow(o.m) * (mt ? eff(mt, foe.type) : 1) * (.85 + Math.random() * .3); };
+      // switch out of a bad matchup sometimes
+      const hurt = t => Math.max(1, ...foe.moves.map(m => moveType(m, foe)).filter(Boolean).map(x => eff(x, t)));
+      if (hurt(f.type) > 1 && f.hp / f.max > .3 && Math.random() < .35) {
+        const k = this.op.findIndex((x, i) => i !== this.ci && x.hp > 0 && hurt(x.type) <= 1);
+        if (k >= 0) return { kind: 'switch', to: k };
+      }
       attacks.sort((a, b) => score(b) - score(a));
       return { kind: 'move', i: attacks[0].i };
     },
@@ -1137,10 +1194,11 @@
     async end(result) {
       this.over = true; this.busy = false; this.phase = 'over'; this.clearButtons(); FX.fadeMusic();
       const opp = esc(this.oppName());
+      if (result === 'win' && this.mode === 'online' && window.MBAlerts) MBAlerts.loss(PvP.opp, PvP.me || Feed.name() || 'Someone', 'Card Battle');
       if (result === 'win') { FX.play('win'); await this.say(`🏆 <b>You defeated ${this.mode === 'online' ? opp : 'the computer'}!</b> +1 🍀 Lucky Pack`, 400);
         window.dispatchEvent(new CustomEvent('mb:pack', { detail: { why: this.mode === 'online' ? 'beating ' + PvP.opp + ' in Card Battle' : 'winning a Card Battle', lucky: true } })); }
       else if (result === 'draw') { await this.say('Both sides are out of cards! It\'s a draw.', 400); }
-      else { FX.play('lose'); await this.say(`💀 <b>You're out of usable cards!</b> ${this.mode === 'online' ? opp + ' wins.' : 'You blacked out…'}`, 400); }
+      else { FX.play('lose'); await this.say(`💀 <b>You're out of usable cards!</b> ${this.mode === 'online' ? opp + ' wins. Everyone on the site will hear about this.' : 'You blacked out…'}`, 400); }
       const box = this.E('.fb-moves');
       const a = document.createElement('button'); a.className = 'fb-move'; a.style.background = '#2f9e44';
       a.innerHTML = this.mode === 'online' ? '<b>Rematch</b><span>Both pick new teams</span>' : '<b>Play again</b><span>Pick a new team</span>';
@@ -1149,6 +1207,149 @@
       b.innerHTML = this.mode === 'online' ? '<b>Leave</b><span>Back to battle menu</span>' : '<b>Back</b><span>Battle menu</span>';
       b.onclick = () => { if (this.mode === 'online') { PvP.close(); this.mode = null; } Battle.intro(); };
       box.append(a, b);
+    }
+  };
+
+  /* ------------------------------ Trading (online, 1 on 1) ------------------------------ */
+  // Both players offer up to 5 cards, both lock in, both confirm, then the cards swap on both screens.
+  const TMAX = 5;
+  const tradeOk = id => typeof id === 'string' && id !== SECRET.id && (id === TOKEN.id || (/^[a-z0-9 _.-]+:(\d{1,3})$/i.test(id) && +id.split(':')[1] >= 1 && +id.split(':')[1] <= 100)) && !!cardById(id);
+  const Trade = {
+    peer: null, conn: null, host: false, opp: 'Friend', me: '', mine: [], theirs: [], lockMe: false, lockThem: false, confMe: false, confThem: false, done: false, all: false, on: false,
+    el() { return root.querySelector('.trade'); }, E(s) { return this.el().querySelector(s); },
+    online() { return !!(this.conn && this.conn.open); },
+    close() { try { this.conn && this.conn.close(); } catch (e) {} try { this.peer && this.peer.destroy(); } catch (e) {} this.conn = this.peer = null; this.on = false; },
+    send(m) { try { if (this.conn && this.conn.open) this.conn.send(m); } catch (e) {} },
+    reset() { this.mine = []; this.theirs = []; this.lockMe = this.lockThem = this.confMe = this.confThem = false; this.done = false; },
+    room: c => 'monkeyboyz-tr-' + c.toLowerCase(),
+    lobby(msg) {
+      this.close();
+      this.el().innerHTML = `<div class="bt-score">🤝 Trade cards with a friend</div>
+        <p class="bt-msg">One of you makes a room, the other joins with the code. You both pick up to ${TMAX} cards, lock in, and confirm. Then they swap.</p>
+        <div style="max-width:340px;margin:0 auto;display:flex;flex-direction:column;gap:10px">
+          <input class="tr-name" maxlength="16" placeholder="Your name" style="font:inherit;font-size:16px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-align:center">
+          <button class="cards-btn tr-create">Create trade room</button>
+          <div style="display:flex;gap:8px"><input class="tr-code" maxlength="4" placeholder="CODE" autocomplete="off" style="flex:1;min-width:0;font:inherit;font-size:16px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-align:center;letter-spacing:.3em;text-transform:uppercase;font-weight:700"><button class="cards-btn ghost tr-join">Join</button></div>
+          <p class="bt-msg tr-msg" style="color:#e5484d">${esc(msg || '')}</p>
+        </div>`;
+      const nm = this.E('.tr-name'); nm.value = this.me || Feed.name();
+      const code = this.E('.tr-code'); code.oninput = () => { code.value = code.value.toUpperCase().replace(/[^A-Z]/g, ''); };
+      code.onkeydown = e => { if (e.key === 'Enter') this.join(); };
+      this.E('.tr-create').onclick = () => this.create();
+      this.E('.tr-join').onclick = () => this.join();
+    },
+    nameOk() {
+      const v = (this.E('.tr-name').value || '').trim().slice(0, 16);
+      if (!v) { this.E('.tr-msg').textContent = 'Type your name first.'; return false; }
+      this.me = v; LS.set('mb_flappy_name', v); const fn = root.querySelector('.feed-name'); if (fn) fn.value = v; return true;
+    },
+    create() {
+      if (!this.nameOk()) return; this.E('.tr-msg').textContent = 'Making a room…';
+      const L = 'ABCDEFGHJKMNPQRSTUVWXYZ', code = Array.from({ length: 4 }, () => L[Math.floor(Math.random() * L.length)]).join('');
+      PvP.load().then(() => {
+        this.close(); this.host = true; this.on = true;
+        const peer = this.peer = new Peer(this.room(code));
+        peer.on('open', () => {
+          this.el().innerHTML = `<div class="bt-score">Trade room code</div><div style="font-size:44px;font-weight:900;letter-spacing:.25em;color:#40c057">${code}</div>
+            <p class="bt-msg">Send this to your friend. They open Monkey Cards → 🤝 Trade and type it in.</p>
+            <div style="display:flex;gap:10px;justify-content:center"><button class="cards-btn ghost tr-copy">Copy code</button><button class="cards-btn ghost tr-cancel">Cancel</button></div>
+            <p class="bt-msg tr-wait" style="color:var(--ink2)">Waiting for your friend…</p>`;
+          this.E('.tr-copy').onclick = () => { try { navigator.clipboard.writeText(code); this.E('.tr-wait').textContent = 'Copied! Waiting for your friend…'; } catch (e) {} };
+          this.E('.tr-cancel').onclick = () => this.lobby();
+        });
+        peer.on('connection', conn => {
+          if (this.conn && this.conn.open) { conn.on('open', () => { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 400); }); return; }
+          this.wire(conn); conn.on('open', () => this.send({ t: 'hi', name: this.me || 'Friend' }));
+        });
+        peer.on('error', e => { if (e.type === 'unavailable-id') return this.create(); if (!this.conn) this.lobby('Couldn\'t make a room (' + (e.type || 'network') + ').'); });
+      }).catch(() => this.lobby('Couldn\'t load online trading. Check your connection.'));
+    },
+    join() {
+      const code = (this.E('.tr-code').value || '').toUpperCase().trim();
+      if (!/^[A-Z]{4}$/.test(code)) { this.E('.tr-msg').textContent = 'Type the 4-letter room code.'; return; }
+      if (!this.nameOk()) return; this.E('.tr-msg').textContent = 'Connecting…';
+      PvP.load().then(() => {
+        this.close(); this.host = false; this.on = true;
+        const peer = this.peer = new Peer(); let done = false;
+        const fail = m => { if (done) return; done = true; this.lobby(m); };
+        const t = setTimeout(() => fail('Couldn\'t reach that room. Check the code.'), 15000);
+        peer.on('open', () => { const conn = peer.connect(this.room(code), { reliable: true }); this.wire(conn);
+          conn.on('open', () => { done = true; clearTimeout(t); this.send({ t: 'hi', name: this.me || 'Friend' }); }); });
+        peer.on('error', e => { clearTimeout(t); fail(e.type === 'peer-unavailable' ? 'No trade room with that code.' : 'Connection problem (' + (e.type || 'network') + ').'); });
+      }).catch(() => this.lobby('Couldn\'t load online trading. Check your connection.'));
+    },
+    wire(conn) {
+      this.conn = conn;
+      conn.on('data', m => this.onMsg(m));
+      conn.on('close', () => { if (this.conn === conn) { this.conn = null; if (!this.done) this.lobby(this.opp + ' left the trade.'); } });
+    },
+    key() { const a = this.host ? this.mine : this.theirs, b = this.host ? this.theirs : this.mine; return a.join(',') + '|' + b.join(','); },
+    onMsg(m) {
+      if (!m || typeof m !== 'object') return;
+      if (m.t === 'hi') { this.opp = String(m.name || 'Friend').slice(0, 16); this.reset(); this.table(); }
+      else if (m.t === 'full') this.lobby('That trade room is already full.');
+      else if (m.t === 'offer') { this.theirs = (Array.isArray(m.ids) ? m.ids : []).filter(tradeOk).slice(0, TMAX); this.lockMe = this.lockThem = this.confMe = this.confThem = false; this.done = false; this.table(); }
+      else if (m.t === 'lock') { this.lockThem = !!m.on && m.key === this.key(); if (!this.lockThem) this.confThem = false; this.table(); }
+      else if (m.t === 'confirm') { if (m.key === this.key() && this.lockThem) { this.confThem = true; this.finish(); this.table(); } }
+    },
+    offerChanged() { this.lockMe = this.lockThem = this.confMe = this.confThem = false; this.done = false; this.send({ t: 'offer', ids: this.mine }); this.table(); },
+    toggle(id) {
+      if (this.lockMe || this.done) return;
+      const k = this.mine.indexOf(id);
+      if (k >= 0) this.mine.splice(k, 1);
+      else if (this.mine.length >= TMAX) return this.status(`You can offer up to ${TMAX} cards.`);
+      else this.mine.push(id);
+      FX.play('select'); this.offerChanged();
+    },
+    status(t) { const s = this.E('.tr-status'); if (s) s.textContent = t; },
+    finish() {
+      if (!(this.confMe && this.confThem) || this.done) return;
+      S = LS.get('mb_cards', S);
+      if (this.mine.some(id => !(S.own[id] > 0))) { this.status('You don\'t have one of those cards anymore. Trade cancelled.'); this.mine = this.mine.filter(id => S.own[id] > 0); return this.offerChanged(); }
+      this.done = true;
+      this.mine.forEach(id => { S.own[id]--; if (S.own[id] <= 0) delete S.own[id]; });
+      this.theirs.forEach(id => addCard(id));
+      save(); render(); FX.play('win');
+      toast(`🤝 Trade done with ${this.opp}! You got ${this.theirs.length} card${this.theirs.length === 1 ? '' : 's'}.`);
+      const best = this.theirs.map(cardById).filter(Boolean).sort((a, b) => (b.token ? 9 : b.lvl) - (a.token ? 9 : a.lvl))[0];
+      if (best) setTimeout(() => bigView(best), 600);
+    },
+    table() {
+      if (!this.online()) return;
+      const lockedBoth = this.lockMe && this.lockThem;
+      const show = (ids, mineSide) => ids.length ? '' : `<p class="empty">${mineSide ? 'Tap cards below to offer them' : this.opp + ' hasn\'t offered anything yet'}</p>`;
+      this.el().innerHTML = `<div class="bt-score">🤝 Trading with ${esc(this.opp)}</div>
+        <div class="tr-sides">
+          <div class="tr-side${this.lockMe ? ' locked' : ''}"><h5>You give ${this.lockMe ? '🔒' : ''}</h5><div class="tr-offer tr-mine">${show(this.mine, true)}</div></div>
+          <div class="tr-arrow">⇄</div>
+          <div class="tr-side${this.lockThem ? ' locked' : ''}"><h5>${esc(this.opp)} gives ${this.lockThem ? '🔒' : ''}</h5><div class="tr-offer tr-theirs">${show(this.theirs, false)}</div></div>
+        </div>
+        <p class="bt-msg tr-status">${this.done ? '✅ Trade complete! Change the offers to trade again.' : this.confMe ? `Waiting for ${esc(this.opp)} to confirm…` : lockedBoth ? 'Both locked in. Confirm to swap!' : this.lockMe ? `Locked. Waiting for ${esc(this.opp)} to lock in…` : this.lockThem ? `${esc(this.opp)} locked in. Lock in to continue.` : 'Pick cards, then both lock in.'}</p>
+        <div class="tr-btns">
+          ${this.done ? '' : lockedBoth ? `<button class="cards-btn tr-conf" style="background:#2f9e44;color:#fff"${this.confMe ? ' disabled' : ''}>✅ Confirm trade</button>` : ''}
+          ${this.done ? '' : `<button class="cards-btn${this.lockMe ? ' ghost' : ''} tr-lock"${!this.mine.length && !this.theirs.length ? ' disabled' : ''}>${this.lockMe ? 'Unlock' : '🔒 Lock in'}</button>`}
+          <button class="cards-btn ghost tr-leave">Leave</button>
+        </div>
+        <h5 class="tr-h">Your cards ${this.lockMe ? '(unlock to change)' : `(tap to offer, up to ${TMAX})`}</h5>
+        <div class="tr-pool"></div>`;
+      const size = window.innerWidth < 600 ? 84 : 100;
+      const put = (box, ids, click) => ids.forEach(id => { const c = cardById(id); if (!c) return; const el = cardEl(c, size); el.onclick = () => click(id, c); this.E(box).appendChild(el); });
+      put('.tr-mine', this.mine, id => this.toggle(id));
+      put('.tr-theirs', this.theirs, (id, c) => bigView(c));
+      S = LS.get('mb_cards', S);
+      const list = owned().filter(id => id !== SECRET.id).map(cardById).filter(Boolean).sort((a, b) => (b.token ? 9 : b.lvl) - (a.token ? 9 : a.lvl) || (b.power || 0) - (a.power || 0));
+      const pool = this.E('.tr-pool');
+      if (!list.length) pool.innerHTML = '<p class="empty">You don\'t have any cards yet. Open some packs!</p>';
+      (this.all ? list : list.slice(0, 40)).forEach(c => {
+        const el = cardEl(c, size); if (this.mine.includes(c.id)) el.classList.add('pick');
+        if (S.own[c.id] > 1) { const n = document.createElement('span'); n.className = 'tr-n'; n.textContent = '×' + S.own[c.id]; el.appendChild(n); }
+        el.onclick = () => this.toggle(c.id); pool.appendChild(el);
+      });
+      if (!this.all && list.length > 40) { const b = document.createElement('button'); b.className = 'cards-btn ghost'; b.textContent = `Show all ${list.length}`; b.onclick = () => { this.all = true; this.table(); }; pool.after(b); }
+      const q = s => this.E(s);
+      if (q('.tr-lock')) q('.tr-lock').onclick = () => { this.lockMe = !this.lockMe; if (!this.lockMe) this.confMe = false; this.send({ t: 'lock', on: this.lockMe, key: this.key() }); this.table(); };
+      if (q('.tr-conf')) q('.tr-conf').onclick = () => { if (!(this.lockMe && this.lockThem)) return; this.confMe = true; this.send({ t: 'confirm', key: this.key() }); this.finish(); this.table(); };
+      q('.tr-leave').onclick = () => { this.done = true; this.close(); this.lobby(); };
     }
   };
 

@@ -430,6 +430,7 @@
       const me = myName(), opp = Net.oppName;
       // the winner's browser saves the result; the match ID (same on both sides) stops double counting
       if (won) Rec.post(me, opp, 'bb-' + G.seed + '-' + [me, opp].map(x => x.toLowerCase()).sort().join('-'));
+      if (won && window.MBAlerts) MBAlerts.loss(opp, me, 'Banana Blocks');
       else setTimeout(() => Rec.load(), 3500);
     }
   }
