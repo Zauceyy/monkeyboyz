@@ -285,6 +285,7 @@
     document.getElementById('gameWhack').style.display = which === 'whack' ? '' : 'none';
     document.getElementById('gameRace').style.display = which === 'race' ? '' : 'none';
     document.getElementById('gameDle').style.display = which === 'dle' ? '' : 'none';
+    Object.entries(PUZ).forEach(([k, [box, api]]) => { const el = document.getElementById(box); if (el) el.style.display = which === k ? '' : 'none'; if (which !== k && window[api]) window[api].hide(); });
     const B = window.MBBlocks, F = window.MBFlash, K = window.MBCards, W = window.MBWhack, RC = window.MBRace, DL = window.MBDle;
     if (which !== 'dle' && DL) DL.hide();
     if (which !== 'flash' && F) F.hide();
@@ -301,8 +302,10 @@
     else if (which === 'whack') { if (W) W.show(); }
     else if (which === 'race') { if (RC) RC.show(); }
     else if (which === 'dle') { if (DL) DL.show(); }
+    else if (PUZ[which]) { if (window[PUZ[which][1]]) window[PUZ[which][1]].show(); }
     else if (B) B.start();
   }
+  const PUZ = { conn: ['gameConn', 'MBConn'], strands: ['gameStrands', 'MBStrands'], mini: ['gameMini', 'MBMini'], xword: ['gameXword', 'MBXword'] };
   window.MBGames = {
     show() {
       if (!inited) {
@@ -316,11 +319,12 @@
         if (window.MBWhack) MBWhack.init(document.getElementById('whackRoot'));
         if (window.MBRace) MBRace.init(document.getElementById('raceRoot'));
         if (window.MBDle) MBDle.init(document.getElementById('dleRoot'));
+        Object.values(PUZ).forEach(([box, api]) => { if (window[api]) window[api].init(document.getElementById(box).firstElementChild); });
         document.querySelectorAll('.game-pick').forEach(b => b.onclick = () => pick(b.dataset.game));
       }
       pick(current);
     },
-    hide() { Flappy.stop(); Clicker.stop(); if (window.MBBlocks) MBBlocks.stop(); if (window.MBFlash) MBFlash.hide(); if (window.MBCards) MBCards.hide(); if (window.MBWhack) MBWhack.hide(); if (window.MBRace) MBRace.hide(); if (window.MBDle) MBDle.hide(); }
+    hide() { Flappy.stop(); Clicker.stop(); if (window.MBBlocks) MBBlocks.stop(); if (window.MBFlash) MBFlash.hide(); if (window.MBCards) MBCards.hide(); if (window.MBWhack) MBWhack.hide(); if (window.MBRace) MBRace.hide(); if (window.MBDle) MBDle.hide(); Object.values(PUZ).forEach(([, api]) => { if (window[api]) window[api].hide(); }); }
   };
   document.addEventListener('visibilitychange', () => { if (document.hidden) window.MBGames.hide(); });
 })();
