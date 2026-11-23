@@ -87,11 +87,39 @@
   .pill-note{display:inline-block;font-size:12px;background:#f5e6b3;color:#6b5418;border-radius:980px;padding:3px 9px;margin-left:6px}
   .progress{font-size:13px;color:var(--ink2);margin-top:8px}
   @media (max-width:640px){ .media-prev{width:100%;height:180px} .res-row{grid-template-columns:90px 1fr 32px} }
+
+  /* dark mode (same setting as the main site) */
+  html[data-theme=dark]{--ink:#f5f5f7;--ink2:#a1a1a6;--bg:#000;--card:#1c1c1e;--line:#3a3a3c;--blue:#2997ff;color-scheme:dark}
+  html[data-theme=dark] .field,html[data-theme=dark] .addbox{background:#2c2c2e;border-color:#3a3a3c;color:var(--ink)}
+  html[data-theme=dark] .btn.ghost,html[data-theme=dark] .icon,html[data-theme=dark] .thumb,html[data-theme=dark] .res-bar{background:#2c2c2e;color:var(--ink)}
+  html[data-theme=dark] .icon:hover{background:#3a3a3c}
+  html[data-theme=dark] .btn.danger,html[data-theme=dark] .icon.del:hover{background:#3b1d1d;color:#ff6961}
+  html[data-theme=dark] label.chk{background:#2c2c2e}
+  html[data-theme=dark] header{background:rgba(22,22,23,.85);border-bottom-color:rgba(255,255,255,.08)}
+  html[data-theme=dark] .tab.on{background:#f5f5f7;color:#000}
+  html[data-theme=dark] .switch span{background:#3a3a3c}
+  html[data-theme=dark] .login .box,html[data-theme=dark] .card{box-shadow:0 0 0 1px #2c2c2e}
+  html[data-theme=dark] .savebar,html[data-theme=dark] .toast{background:#f5f5f7;color:#000}
+  html[data-theme=dark] .pill-note{background:#4a3c14;color:#f5e6b3}
+  html[data-theme=dark] select.field option{background:#2c2c2e}
+  .themebtn{background:none;border:1px solid var(--line);color:var(--ink);border-radius:980px;width:34px;height:34px;font-size:16px;flex:none}
+  .themebtn.float{position:fixed;top:14px;right:14px;z-index:30;background:var(--card)}
+  /* videos on award nominees */
+  .vids{margin-top:14px}
+  .vrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;background:var(--bg);border-radius:14px;padding:8px}
+  .vrow .vprev{width:96px;height:54px;border-radius:10px;background:#000;object-fit:cover;flex:none}
+  .vrow b{font-size:14px;min-width:90px}
+  .vadd{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+  .vadd select.field,.vadd input.field{margin:0;width:auto;padding:9px 12px;font-size:14px}
 </style>
+<script>(function(){ var t; try { t = localStorage.getItem('mb_theme'); } catch(e) {}
+  if (!t) t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', t); })();</script>
 </head>
 <body>
 
 <!-- ============ LOGIN ============ -->
+<button class="themebtn float" id="themeBtnLogin" title="Dark / light mode" aria-label="Toggle dark mode"></button>
 <section class="login" id="loginView">
   <div class="box">
     <div style="font-size:44px">🐒</div>
@@ -115,6 +143,7 @@
     <div class="bar">
       <span class="brand">🐒 MonkeyBoyz Editor</span>
       <a href="./" target="_blank" style="font-size:14px">View site ↗</a>
+      <button class="themebtn" id="themeBtn" title="Dark / light mode" aria-label="Toggle dark mode"></button>
       <nav class="tabs" id="tabs">
         <button class="tab" data-t="members">Members</button>
         <button class="tab" data-t="awards">Awards</button>
@@ -343,8 +372,8 @@ async function uploadFile(file, status){
   return call('upload', { name: file.name, mime: file.type, data });
 }
 
-function picButton(label, onDone){
-  const pic = el('label','btn ghost small', label); const f = el('input'); f.type = 'file'; f.accept = 'image/*'; f.hidden = true; pic.appendChild(f);
+function picButton(label, onDone, accept){
+  const pic = el('label','btn ghost small', label); const f = el('input'); f.type = 'file'; f.accept = accept || 'image/*'; f.hidden = true; pic.appendChild(f);
   f.onchange = async () => {
     if (!f.files[0]) return; pic.firstChild.textContent = 'Uploading…';
     try { const d = await uploadFile(f.files[0]); onDone(d.url); render(); dirty(); toast('Uploaded — click Save & publish'); }
@@ -361,7 +390,7 @@ function renderMembers(){
     const img = el('img','thumb'); img.src = m.img || ''; img.alt = '';
     const name = input(m.name, 'Name', v => {
       const old = m.name; m.name = v;
-      C.categories.forEach(c => { if (Array.isArray(c.nominees)) c.nominees = c.nominees.map(n => n === old ? v : n); });
+      C.categories.forEach(c => { if (Array.isArray(c.nominees)) c.nominees = c.nominees.map(n => n === old ? v : n); if (c.videos && c.videos[old] && !c.videos[v]) { c.videos[v] = c.videos[old]; delete c.videos[old]; } });
     });
     name.classList.add('grow');
     const pic = el('label','btn ghost small','Change picture'); const f = el('input'); f.type = 'file'; f.accept = 'image/*'; f.hidden = true; pic.appendChild(f);
@@ -458,6 +487,9 @@ function renderAwards(){
     addX.onclick = () => { (c.extras = c.extras || []).push({ name: '', img: '' }); render(); dirty(); };
     ex.appendChild(addX); card.appendChild(ex);
 
+    // Videos: attach a clip to any nominee in this award (YouTube link, Drive link or an upload)
+    card.appendChild(videoSection(c));
+
     // Optional banner picture/GIF for the category
     const bn = el('div','row'); bn.style.marginTop = '14px';
     if (c.img) { const th = el('img','thumb'); th.src = c.img; th.alt = ''; th.style.cssText = 'width:96px;height:54px'; bn.appendChild(th); }
@@ -466,6 +498,40 @@ function renderAwards(){
     card.appendChild(bn);
     box.appendChild(card);
   });
+}
+function vThumb(u){
+  const y = ytId(u); if (y) return `https://i.ytimg.com/vi/${y}/mqdefault.jpg`;
+  const m = String(u).match(/\/file\/d\/([\w-]{10,})/) || String(u).match(/[?&]id=([\w-]{10,})/);
+  return m ? 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w320' : '';
+}
+function videoSection(c){
+  const box = el('div','vids');
+  box.appendChild(el('div', null, '🎬 Videos')).style.cssText = 'font-weight:600;font-size:14px;margin-bottom:2px';
+  box.appendChild(el('div','hint','Attach a clip to a nominee. Voters get a ▶ Watch button on that choice.')).style.margin = '0 0 4px';
+  const names = (c.nominees === 'all' || !Array.isArray(c.nominees) ? C.members.map(m => m.name) : c.nominees)
+    .concat((c.extras || []).map(x => x && x.name).filter(Boolean));
+  c.videos = c.videos || {};
+  Object.keys(c.videos).forEach(n => {
+    const r = el('div','vrow'), th = el('img','vprev'); th.src = vThumb(c.videos[n]); th.alt = '';
+    const name = el('b', null, n + (names.includes(n) ? '' : ' (not in this award anymore)'));
+    const link = input(c.videos[n], 'YouTube or Drive link', v => { c.videos[n] = v.trim(); }); link.classList.add('grow');
+    const rm = el('button','btn danger small','Remove'); rm.onclick = () => { delete c.videos[n]; render(); dirty(); };
+    r.append(th, name, link, rm); box.appendChild(r);
+  });
+  const free = names.filter(n => !c.videos[n]);
+  if (!free.length) { if (names.length) box.appendChild(el('div','hint','Every nominee has a video.')); return box; }
+  const add = el('div','vadd'), sel = el('select','field');
+  free.forEach(n => { const o = el('option', null, n); o.value = n; sel.appendChild(o); });
+  const url = el('input','field'); url.placeholder = 'Paste a YouTube or Drive link'; url.style.flex = '1'; url.style.minWidth = '200px';
+  const go = el('button','btn small','Add video');
+  go.onclick = () => {
+    const u = url.value.trim();
+    if (!/^https:\/\//.test(u)) return toast('Paste a full https:// link, or upload a video');
+    c.videos[sel.value] = u; render(); dirty(); toast('Video added — click Save & publish');
+  };
+  add.append(sel, url, go, picButton('Upload video', u => { c.videos[sel.value] = u; }, 'video/*'));
+  box.appendChild(add);
+  return box;
 }
 $('votingOpen').onchange = () => { C.votingOpen = $('votingOpen').checked; dirty(); };
 $('allowWriteIns').onchange = () => { C.allowWriteIns = $('allowWriteIns').checked; dirty(); };
@@ -629,6 +695,16 @@ function render(){ renderMembers(); renderAwards(); renderMedia(); }
 
 /* ---------------- start ---------------- */
 if (token) { try { me = JSON.parse(ss.get('mb_me') || 'null'); } catch(e) {} enter().catch(() => logoutLocal()); }
+
+/* ---------------- dark mode ---------------- */
+function syncTheme(){ const d = document.documentElement.getAttribute('data-theme') === 'dark';
+  ['themeBtn','themeBtnLogin'].forEach(id => { const b = document.getElementById(id); if (b) { b.textContent = d ? '☀️' : '🌙'; b.title = d ? 'Switch to light mode' : 'Switch to dark mode'; } }); }
+['themeBtn','themeBtnLogin'].forEach(id => { const b = document.getElementById(id); if (b) b.onclick = () => {
+  const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t); try { localStorage.setItem('mb_theme', t); } catch (e) {} syncTheme(); }; });
+syncTheme();
+new MutationObserver(() => { const lb = document.getElementById('themeBtnLogin'); if (lb) lb.classList.toggle('hide', document.getElementById('loginView').classList.contains('hide')); })
+  .observe(document.getElementById('loginView'), { attributes: true, attributeFilter: ['class'] });
 </script>
 </body>
 </html>

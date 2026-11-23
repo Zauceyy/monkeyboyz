@@ -224,6 +224,8 @@
   .nom .check{position:absolute;top:12px;right:12px;width:26px;height:26px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);
               background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font-size:14px;color:transparent;transition:.2s}
   .nom.sel{box-shadow:0 0 0 2px var(--gold2)}
+  .nom .watch{position:absolute;left:10px;top:10px;background:rgba(0,0,0,.72);color:#fff;font-size:13px;font-weight:700;padding:6px 11px;border-radius:980px;backdrop-filter:blur(6px);cursor:pointer;transition:background .15s}
+  .nom .watch:hover,.nom .watch:focus-visible{background:#e5484d;outline:none}
   .nom.sel .check{background:var(--gold2);border-color:var(--gold2);color:#000}
   .submit-row{text-align:center;padding:50px 22px 110px}
   .pill.gold{background:linear-gradient(180deg,var(--gold1),var(--gold2));color:#000;border:0;cursor:pointer;font:inherit;font-size:17px;font-weight:600}
@@ -948,6 +950,10 @@ let picks = {}, locked = false;
 const nomineesFor = c => (c.nominees === 'all' || !Array.isArray(c.nominees) ? C.members : C.members.filter(m => c.nominees.includes(m.name)))
   .concat((c.extras || []).filter(x => x && x.name));
 
+function vidThumb(u){
+  const y = ytId(u); if (y) return 'https://i.ytimg.com/vi/' + y + '/hqdefault.jpg';
+  const d = driveId(u); return d ? 'https://drive.google.com/thumbnail?id=' + d + '&sz=w600' : '';
+}
 function renderVote(){
   try { picks = JSON.parse(store.get(keyDraft()) || '{}'); } catch(e) { picks = {}; }
   locked = !!finalBallot();
@@ -959,8 +965,16 @@ function renderVote(){
     nomineesFor(c).forEach((n, ni) => {
       const b = el('button','nom'); b.type = 'button';
       const art = el('div','art');
-      if (n.img) { const im = new Image(); im.src = safeUrl(n.img); im.alt = ''; im.loading = 'lazy'; art.appendChild(im); } else art.textContent = ni + 1;
+      const vid = c.videos && safeUrl(c.videos[n.name]);
+      const thumb = n.img ? safeUrl(n.img) : vid ? vidThumb(vid) : '';
+      if (thumb) { const im = new Image(); im.src = thumb; im.alt = ''; im.loading = 'lazy'; art.appendChild(im); } else art.textContent = ni + 1;
       b.appendChild(art); b.appendChild(el('div','nm', n.name)); b.appendChild(el('div','check','✓'));
+      if (vid) {
+        const w = el('span','watch','▶ Watch'); w.setAttribute('role','button'); w.tabIndex = 0;
+        const play = e => { e.stopPropagation(); e.preventDefault(); openViewer({ type: ytId(vid) ? 'youtube' : 'video', url: vid, caption: n.name + ' · ' + c.title }); };
+        w.onclick = play; w.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') play(e); };
+        b.appendChild(w); b.classList.add('has-vid');
+      }
       if (picks[c.title] === n.name) b.classList.add('sel');
       b.onclick = () => {
         if (locked) return;
